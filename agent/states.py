@@ -91,6 +91,7 @@ class StateConfig:
     allowed_triggers: list[Trigger]
     max_agent_turns: int = 5  # --> dont get stuck in a state forever
     guidelines: list[str] = field(default_factory=list) # Behavior rules for each state
+    timeout_trigger: Trigger | None = None  # trigger to fire automatically when max_agent_turns exceeded
 
 
 STATE_CONFIGS: dict[CallState, StateConfig] = {
@@ -111,6 +112,7 @@ STATE_CONFIGS: dict[CallState, StateConfig] = {
             "Don't pitch yet — just confirm identity",
             "If gatekeeper, ask to be connected",
         ],
+        timeout_trigger=Trigger.NO_ANSWER,
     ),
 
     CallState.RAPPORT: StateConfig(
@@ -127,6 +129,7 @@ STATE_CONFIGS: dict[CallState, StateConfig] = {
             "Use the pre-call research hook",
             "Transition with: 'The reason I'm calling is...'",
         ],
+        timeout_trigger=Trigger.RAPPORT_ESTABLISHED,
     ),
 
     CallState.DISCOVERY: StateConfig(
@@ -145,6 +148,7 @@ STATE_CONFIGS: dict[CallState, StateConfig] = {
             "Listen for pain signals to use in the pitch",
             "Don't pitch prematurely — gather info first",
         ],
+        timeout_trigger=Trigger.QUALIFIED,
     ),
 
     CallState.PITCH: StateConfig(
@@ -161,6 +165,7 @@ STATE_CONFIGS: dict[CallState, StateConfig] = {
             "Keep it concise — no monologues",
             "Ask a check-in question after key claims",
         ],
+        timeout_trigger=Trigger.BUYING_SIGNAL,
     ),
 
     CallState.OBJECTION: StateConfig(
@@ -178,6 +183,7 @@ STATE_CONFIGS: dict[CallState, StateConfig] = {
             "Back claims with specific data from knowledge base",
             "If objection persists after 2 attempts, gracefully move on",
         ],
+        timeout_trigger=Trigger.OBJECTION_UNRESOLVED,
     ),
 
     CallState.CLOSE: StateConfig(
@@ -194,6 +200,7 @@ STATE_CONFIGS: dict[CallState, StateConfig] = {
             "Keep the ask small: 15-minute demo, not a 1-hour meeting",
             "If they hesitate, offer an alternative (send info first)",
         ],
+        timeout_trigger=Trigger.COMMITMENT_NO,
     ),
 
     CallState.WRAP_UP: StateConfig(
@@ -276,15 +283,58 @@ class StateMachine():
 
         return self.current_state
 
-    def increment_turn(self) -> bool:
+    def increment_turn(self) -> CallState | None:
         """
         Call this each time the agent speaks in the current state.
-        Returns True if we've exceeded max turns (agent is stuck).
-        Your brain.py should force a transition if this returns True.
+        If max turns exceeded and timeout_trigger is configured,
+        automatically fires the transition and returns the new state.
+        Returns None if no timeout occurred.
         """
         self._turns_in_state += 1
-        return self._turns_in_state >= self.config.max_agent_turns
+        if self._turns_in_state < self.config.max_agent_turns:
+            return None
+
+        timeout = self.config.timeout_trigger
+        if timeout is not None and self.can_transition(timeout):
+            return self.transition(timeout)
+
+        return None
 
     def can_transition(self, trigger: Trigger) -> bool:
         """Check if a trigger is valid without applying it."""
         return (self.current_state, trigger) in TRANSITIONS
+
+
+# --- Consistency validation ---
+# Runs at import time: catches mismatches between STATE_CONFIGS and TRANSITIONS early.
+
+def _validate_consistency() -> None:
+    for state, config in STATE_CONFIGS.items():
+        for trigger in config.allowed_triggers:
+            if (state, trigger) not in TRANSITIONS:
+                raise AssertionError(
+                    f"STATE_CONFIGS[{state.value}] lists trigger {trigger.value} "
+                    f"in allowed_triggers but TRANSITIONS has no entry for "
+                    f"({state.value}, {trigger.value})"
+                )
+        if config.timeout_trigger is not None:
+            if config.timeout_trigger not in config.allowed_triggers:
+                raise AssertionError(
+                    f"STATE_CONFIGS[{state.value}] has timeout_trigger "
+                    f"{config.timeout_trigger.value} which is not in its allowed_triggers"
+                )
+
+    for (state, trigger) in TRANSITIONS:
+        if state not in STATE_CONFIGS:
+            raise AssertionError(
+                f"TRANSITIONS contains state {state.value} "
+                f"which has no entry in STATE_CONFIGS"
+            )
+        if trigger not in STATE_CONFIGS[state].allowed_triggers:
+            raise AssertionError(
+                f"TRANSITIONS has entry ({state.value}, {trigger.value}) "
+                f"but {trigger.value} is not in "
+                f"STATE_CONFIGS[{state.value}].allowed_triggers"
+            )
+
+_validate_consistency()
