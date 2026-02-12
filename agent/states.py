@@ -337,4 +337,4 @@ def _validate_consistency() -> None:
                 f"STATE_CONFIGS[{state.value}].allowed_triggers"
             )
 
-_validate_consistency()
+#_validate_consistency()

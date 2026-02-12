@@ -1,0 +1,240 @@
+{
+  "metadata": {
+    "product_name": "SalesPilot AI",
+    "company_name": "SalesPilot",
+    "description": "AI-powered outbound sales platform that personalizes outreach at scale",
+    "last_updated": "2025-02-11",
+    "notes": "REPLACE everything below with your actual product, objections, competitors, etc."
+  },
+
+  "knowledge_entries": [
+
+    {
+      "id": "prod_overview_001",
+      "category": "product_knowledge",
+      "subcategory": "overview",
+      "trigger_phrases": ["what do you do", "what is your product", "tell me about", "what does salespilot do"],
+      "content": "SalesPilot is an AI-powered outbound sales platform. It automates prospecting, personalizes outreach at scale, and helps SDR teams 3x their qualified pipeline without adding headcount. We integrate with your existing CRM and outreach tools.",
+      "follow_up_action": "ask_about_current_process",
+      "effectiveness_score": 0.75,
+      "industry_specific": false,
+      "requires_approval": false
+    },
+
+    {
+      "id": "prod_pricing_001",
+      "category": "product_knowledge",
+      "subcategory": "pricing",
+      "trigger_phrases": ["how much", "pricing", "cost", "what do you charge", "per seat", "per user"],
+      "content": "Our pricing starts at $500/month for up to 5 users, with a Growth plan at $1,200/month for up to 15 users. Enterprise pricing is custom. All plans include a 14-day free trial. ROI typically shows within 60 days.",
+      "follow_up_action": "offer_trial",
+      "effectiveness_score": 0.70,
+      "industry_specific": false,
+      "requires_approval": false
+    },
+
+    {
+      "id": "prod_features_001",
+      "category": "product_knowledge",
+      "subcategory": "features",
+      "trigger_phrases": ["features", "what can it do", "capabilities", "integrations", "how does it work"],
+      "content": "Key features: AI-generated personalized email sequences, multi-channel outreach (email, LinkedIn, phone), real-time intent signals, CRM sync (Salesforce, HubSpot), A/B testing, and analytics dashboard. Our AI adapts messaging per prospect based on their role, industry, and engagement history.",
+      "follow_up_action": null,
+      "effectiveness_score": 0.72,
+      "industry_specific": false,
+      "requires_approval": false
+    },
+
+    {
+      "id": "prod_integrations_001",
+      "category": "product_knowledge",
+      "subcategory": "integrations",
+      "trigger_phrases": ["integrate", "salesforce", "hubspot", "crm", "connect with", "work with"],
+      "content": "We integrate natively with Salesforce, HubSpot, Pipedrive, Outreach, SalesLoft, LinkedIn Sales Navigator, Slack, and Zapier. Setup takes under 30 minutes. Data syncs bidirectionally in real-time.",
+      "follow_up_action": null,
+      "effectiveness_score": 0.68,
+      "industry_specific": false,
+      "requires_approval": false
+    },
+
+    {
+      "id": "obj_price_001",
+      "category": "objection_handling",
+      "subcategory": "pricing",
+      "trigger_phrases": ["too expensive", "out of budget", "can't afford", "costs too much", "not in the budget"],
+      "content": "I understand budget is a real concern. Most of our customers felt the same way initially. What they found is that the ROI typically shows within 60 days — on average, teams see a 3x increase in qualified meetings. One customer, a 5-person SDR team like yours, saved 20 hours per week on manual prospecting alone. Would it help if I shared that case study?",
+      "follow_up_action": "offer_case_study",
+      "effectiveness_score": 0.82,
+      "industry_specific": false,
+      "requires_approval": false
+    },
+
+    {
+      "id": "obj_timing_001",
+      "category": "objection_handling",
+      "subcategory": "timing",
+      "trigger_phrases": ["not a good time", "too busy", "maybe next quarter", "not right now", "call me later", "bad timing"],
+      "content": "Totally understand — timing matters. Quick question though: is the timing issue about bandwidth to evaluate, or is it that the pain isn't urgent enough yet? Because what we typically see is that teams who wait a quarter end up losing 3 months of pipeline they could've built. I'm not asking for a big commitment — just 15 minutes to see if it's even worth exploring. What does Thursday look like?",
+      "follow_up_action": "propose_short_meeting",
+      "effectiveness_score": 0.74,
+      "industry_specific": false,
+      "requires_approval": false
+    },
+
+    {
+      "id": "obj_competitor_001",
+      "category": "objection_handling",
+      "subcategory": "competitor",
+      "trigger_phrases": ["already using", "we use outreach", "we use salesloft", "happy with current", "already have a solution"],
+      "content": "That's great — it means you already see the value in outbound tooling. What we hear from teams who've switched from [COMPETITOR] is that they were hitting a ceiling on personalization. [COMPETITOR] is solid for sequences, but our AI adapts every message per prospect rather than just swapping merge fields. That's what drives the 40% higher reply rates. What's your reply rate looking like today?",
+      "follow_up_action": "ask_about_metrics",
+      "effectiveness_score": 0.78,
+      "industry_specific": false,
+      "requires_approval": false
+    },
+
+    {
+      "id": "obj_authority_001",
+      "category": "objection_handling",
+      "subcategory": "authority",
+      "trigger_phrases": ["need to talk to my boss", "not my decision", "I'd have to check", "let me run it by", "need approval"],
+      "content": "Makes total sense — decisions like this usually involve a few people. What if we set up a short 15-minute call with you and your [boss/team lead] together? That way they can ask questions directly and you don't have to play telephone. Who would be the right person to include?",
+      "follow_up_action": "identify_decision_maker",
+      "effectiveness_score": 0.71,
+      "industry_specific": false,
+      "requires_approval": false
+    },
+
+    {
+      "id": "obj_send_email_001",
+      "category": "objection_handling",
+      "subcategory": "deflection",
+      "trigger_phrases": ["send me an email", "send me info", "send me something", "just email me"],
+      "content": "Happy to send something over. So I can send you the right info and not just a generic brochure — what's the biggest challenge your team is facing with outbound right now? That way I can include a relevant case study too.",
+      "follow_up_action": "gather_pain_then_send",
+      "effectiveness_score": 0.69,
+      "industry_specific": false,
+      "requires_approval": false
+    },
+
+    {
+      "id": "comp_outreach_001",
+      "category": "competitor_intelligence",
+      "subcategory": "outreach",
+      "trigger_phrases": ["outreach", "outreach.io"],
+      "content": "Outreach is strong on sequence management and workflows. Where we differentiate: (1) AI-personalized messaging per prospect (not just merge fields), (2) built-in intent signals so you contact prospects when they're actually researching, (3) 40% higher average reply rates reported by customers who switched. Outreach is a workflow tool — we're an intelligence tool.",
+      "follow_up_action": null,
+      "effectiveness_score": 0.80,
+      "industry_specific": false,
+      "requires_approval": false
+    },
+
+    {
+      "id": "comp_salesloft_001",
+      "category": "competitor_intelligence",
+      "subcategory": "salesloft",
+      "trigger_phrases": ["salesloft", "sales loft"],
+      "content": "SalesLoft is great for cadence management, especially mid-market. Compared to SalesLoft: (1) our AI writes and adapts messaging automatically — no manual copywriting, (2) we include enrichment data natively instead of requiring third-party tools, (3) teams report 30% less time spent on manual personalization. SalesLoft is a cadence tool — we handle cadence + intelligence.",
+      "follow_up_action": null,
+      "effectiveness_score": 0.76,
+      "industry_specific": false,
+      "requires_approval": false
+    },
+
+    {
+      "id": "case_saas_001",
+      "category": "case_studies",
+      "subcategory": "saas",
+      "trigger_phrases": ["proof", "results", "case study", "who else uses", "examples", "references"],
+      "content": "CloudMetrics, a 50-person SaaS company, was struggling to scale outbound with a 3-person SDR team. After implementing SalesPilot, they went from 15 qualified meetings/month to 47 within 90 days — a 3.1x increase. Their reply rates jumped from 4% to 11%, and they did it without hiring additional reps. Their VP Sales said: 'It's like having 3 extra SDRs who never take a day off.'",
+      "follow_up_action": null,
+      "effectiveness_score": 0.85,
+      "industry_specific": true,
+      "requires_approval": false
+    },
+
+    {
+      "id": "case_fintech_001",
+      "category": "case_studies",
+      "subcategory": "fintech",
+      "trigger_phrases": ["financial", "fintech", "banking", "finance"],
+      "content": "PayFlow, a Series B fintech with 120 employees, needed compliant outbound at scale. Their challenge: personalization + compliance in a regulated industry. With SalesPilot, they automated compliance checks in every message while tripling outbound volume. Result: 2.8x pipeline growth in 6 months, zero compliance incidents.",
+      "follow_up_action": null,
+      "effectiveness_score": 0.81,
+      "industry_specific": true,
+      "requires_approval": false
+    },
+
+    {
+      "id": "qual_bant_001",
+      "category": "qualifying_criteria",
+      "subcategory": "bant_questions",
+      "trigger_phrases": [],
+      "content": "BANT Discovery Questions:\n- Budget: 'Do you have a budget allocated for improving your outbound process this year?'\n- Authority: 'Who else would be involved in evaluating a solution like this?'\n- Need: 'What's the biggest bottleneck in your outbound process right now?'\n- Timeline: 'Is improving outbound a priority this quarter, or more of a future initiative?'",
+      "follow_up_action": null,
+      "effectiveness_score": 0.70,
+      "industry_specific": false,
+      "requires_approval": false
+    },
+
+    {
+      "id": "qual_meddic_001",
+      "category": "qualifying_criteria",
+      "subcategory": "meddic_questions",
+      "trigger_phrases": [],
+      "content": "MEDDIC Discovery Questions:\n- Metrics: 'How many qualified meetings is your team generating per month right now?'\n- Economic Buyer: 'Who owns the budget for sales tools?'\n- Decision Criteria: 'What would you need to see to feel confident this is the right solution?'\n- Decision Process: 'What does your evaluation process typically look like?'\n- Identify Pain: 'What happens if you don't solve this outbound challenge?'\n- Champion: 'Is there someone on your team who's been pushing to fix this?'",
+      "follow_up_action": null,
+      "effectiveness_score": 0.73,
+      "industry_specific": false,
+      "requires_approval": false
+    },
+
+    {
+      "id": "compliance_001",
+      "category": "compliance_rules",
+      "subcategory": "disclosure",
+      "trigger_phrases": [],
+      "content": "MANDATORY: At the start of every call, identify yourself with your full name, company name, and the purpose of the call. If asked, confirm this is a sales call. Never misrepresent your identity or the reason for calling.",
+      "follow_up_action": null,
+      "effectiveness_score": null,
+      "industry_specific": false,
+      "requires_approval": false
+    },
+
+    {
+      "id": "compliance_002",
+      "category": "compliance_rules",
+      "subcategory": "do_not_call",
+      "trigger_phrases": ["do not call", "stop calling", "remove me", "take me off your list"],
+      "content": "MANDATORY: If the prospect requests to be removed from the call list, immediately acknowledge, apologize for the inconvenience, confirm removal, and end the call. Log this as a DNC request in the CRM. Do NOT attempt to continue the pitch.",
+      "follow_up_action": "log_dnc_request",
+      "effectiveness_score": null,
+      "industry_specific": false,
+      "requires_approval": false
+    },
+
+    {
+      "id": "compliance_003",
+      "category": "compliance_rules",
+      "subcategory": "claims",
+      "trigger_phrases": [],
+      "content": "MANDATORY: Never make guarantees about specific results. Use phrases like 'on average', 'typically', 'our customers report'. Never fabricate case studies or statistics. If you don't know the answer to a technical question, say you'll have a specialist follow up.",
+      "follow_up_action": null,
+      "effectiveness_score": null,
+      "industry_specific": false,
+      "requires_approval": false
+    },
+
+    {
+      "id": "company_specific_template",
+      "category": "company_specific",
+      "subcategory": "pre_call_research",
+      "trigger_phrases": [],
+      "content": "TEMPLATE — this gets replaced per-call with enriched data:\n- Prospect Name: {prospect_name}\n- Title: {prospect_title}\n- Company: {company_name}\n- Industry: {industry}\n- Company Size: {company_size} employees\n- Recent News: {recent_news}\n- Personalization Hook: {hook}\n- Pain Hypothesis: {pain_hypothesis}",
+      "follow_up_action": null,
+      "effectiveness_score": null,
+      "industry_specific": false,
+      "requires_approval": false
+    }
+  ]
+}
