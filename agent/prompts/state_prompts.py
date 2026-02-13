@@ -1,3 +1,14 @@
+"""
+State-specific prompt fragments.
+
+Each state adds specific instructions that tell the LLM:
+- What it's trying to accomplish right now
+- Behavioral guidelines for this phase
+- How to use retrieved knowledge
+
+These get appended to BASE_SYSTEM_PROMPT by brain.py.
+"""
+
 from agent.states import CallState
 
 
