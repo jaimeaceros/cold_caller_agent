@@ -1,6 +1,7 @@
 import json
 import os
 from dataclasses import dataclass, field
+from pydantic import BaseModel
 
 from groq import Groq
 from dotenv import load_dotenv
@@ -17,8 +18,7 @@ load_dotenv()
 # 1. CALL CONTEXT — all the info about who we're calling
 # ---------------------------------------------------------------------------
 
-@dataclass
-class CallContext:
+class CallContext(BaseModel):
     """
     Pre-call information about the prospect.
     In production, this comes from CRM + enrichment APIs.
@@ -93,7 +93,7 @@ class AgentBrain:
         self,
         knowledge_path: str,
         call_context: CallContext | None = None,
-        model: str = "llama-3.1-70b-versatile",
+        model: str = "llama-3.3-70b-versatile",
     ):
         self.context = call_context or CallContext()
         self.state_machine = StateMachine()

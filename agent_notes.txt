@@ -1,0 +1,6 @@
+Agent notes:
+
+1. Greeting state incomplete - add natural conversation to the greeting state before moving on to the rapport
+2. Discovery state must be extended. Contextualize deeper on the products context if user asks.
+3. there is no pushback after a small rejection -> evaluate add a pushback state in which sales techniques are applied
+4. No truning back from wrapup state. add possible "change my mind" scenarios

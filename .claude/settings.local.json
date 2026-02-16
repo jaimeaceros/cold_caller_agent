@@ -4,7 +4,8 @@
       "Bash(python -c:*)",
       "Bash(git rm:*)",
       "Bash(findstr:*)",
-      "Bash(python test.py:*)"
+      "Bash(python test.py:*)",
+      "Bash(docker build:*)"
     ]
   }
 }
