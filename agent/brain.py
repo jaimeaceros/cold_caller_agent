@@ -226,7 +226,9 @@ class AgentBrain:
             state=self.current_state,
             agent_name=self.context.agent_name,
             company_name=self.context.company_name,
+            product_name=self.context.product_name,
             prospect_name=self.context.prospect_name,
+            prospect_company=self.context.prospect_company,
             personalization_hook=self.context.personalization_hook,
             retrieved_knowledge=retrieved_knowledge,
         )
@@ -357,6 +359,8 @@ class AgentBrain:
 
         except Exception as e:
             # Network error, rate limit, etc.
+            import sys
+            print(f"[LLM ERROR] {type(e).__name__}: {e}", file=sys.stderr)
             return LLMResponse(
                 trigger="NONE",
                 response="I'm having a brief technical issue. Could you give me one moment?",

@@ -1,6 +1,47 @@
+"""
+Knowledge Base — vector-powered retrieval layer.
+
+Uses Qdrant (local mode, no external server) + sentence-transformers
+for semantic search. Replaces the keyword-matching approach while
+keeping the exact same interface brain.py calls:
+
+    retrieve(query, categories) → list[RetrievedEntry]
+
+On init:
+  1. Loads the embedding model (BAAI/bge-small-en-v1.5)
+  2. Creates a local Qdrant collection
+  3. Embeds all entries from knowledge_base.json
+  4. Upserts them with metadata (category, subcategory, etc.)
+
+On retrieve():
+  1. Embeds the prospect's message
+  2. Queries Qdrant filtered by category
+  3. Returns top matches as RetrievedEntry objects
+  4. Compliance entries are always included (rule-based, not vector)
+"""
+
 import json
 from pathlib import Path
 from dataclasses import dataclass
+
+from qdrant_client import QdrantClient
+from qdrant_client.models import (
+    VectorParams,
+    Distance,
+    PointStruct,
+    Filter,
+    FieldCondition,
+    MatchAny,
+)
+from sentence_transformers import SentenceTransformer
+
+
+# ---------------------------------------------------------------------------
+# Model config
+# ---------------------------------------------------------------------------
+EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"  # 384 dimensions, ~130MB, fast
+EMBEDDING_DIM = 384
+COLLECTION_NAME = "knowledge"
 
 
 @dataclass
@@ -26,6 +67,66 @@ class KnowledgeBase:
         self.metadata = data.get("metadata", {})
         self.entries: list[dict] = data.get("knowledge_entries", [])
 
+        # --- Load embedding model ---
+        self.model = SentenceTransformer(EMBEDDING_MODEL)
+
+        # --- Init Qdrant (in-memory, no external server) ---
+        self.client = QdrantClient(":memory:")
+        self._build_index()
+
+    def _build_index(self):
+        """Embed all knowledge entries and upsert into Qdrant."""
+
+        # Create collection
+        self.client.create_collection(
+            collection_name=COLLECTION_NAME,
+            vectors_config=VectorParams(
+                size=EMBEDDING_DIM,
+                distance=Distance.COSINE,
+            ),
+        )
+
+        # Separate compliance entries (these are rule-based, not vector-searched)
+        self._compliance_entries: list[dict] = []
+        points: list[PointStruct] = []
+
+        for i, entry in enumerate(self.entries):
+            if entry.get("category") == "compliance_rules":
+                self._compliance_entries.append(entry)
+                continue
+
+            # Build text to embed: combine trigger phrases + content
+            # for richer semantic representation
+            trigger_text = " ".join(entry.get("trigger_phrases", []))
+            content_text = entry.get("content", "")
+            embed_text = f"{trigger_text} {content_text}".strip()
+
+            if not embed_text:
+                continue
+
+            vector = self.model.encode(embed_text).tolist()
+
+            points.append(
+                PointStruct(
+                    id=i,
+                    vector=vector,
+                    payload={
+                        "entry_id": entry.get("id", ""),
+                        "category": entry.get("category", ""),
+                        "subcategory": entry.get("subcategory", ""),
+                        "content": content_text,
+                        "follow_up_action": entry.get("follow_up_action"),
+                        "effectiveness_score": entry.get("effectiveness_score", 0.0),
+                    },
+                )
+            )
+
+        if points:
+            self.client.upsert(
+                collection_name=COLLECTION_NAME,
+                points=points,
+            )
+
     def retrieve(
         self,
         query: str,
@@ -34,101 +135,62 @@ class KnowledgeBase:
         include_compliance: bool = True,
     ) -> list[RetrievedEntry]:
         """
-        Main retrieval method. This is the interface brain.py calls.
+        Main retrieval method. Interface is identical to the old version.
 
         Args:
             query: The prospect's last message (raw text)
             categories: Which knowledge categories to search
-                        (from StateConfig.knowledge_categories)
             top_k: Max number of scored results to return
-                   (compliance entries are added on top of this)
             include_compliance: Always include compliance rules
-                                (default True, only disable for testing)
 
         Returns:
             List of RetrievedEntry objects sorted by relevance score (desc).
             Compliance entries (score=1.0) appear first.
         """
-        query_lower = query.lower()
-        query_words = set(query_lower.split())
+
+        # --- Compliance: rule-based, always included ---
+        compliance: list[RetrievedEntry] = []
+        if include_compliance:
+            query_lower = query.lower()
+            for entry in self._compliance_entries:
+                triggers = entry.get("trigger_phrases", [])
+                if not triggers or any(t.lower() in query_lower for t in triggers):
+                    compliance.append(self._to_retrieved_entry(entry, score=1.0))
+
+        # --- Vector search filtered by category ---
+        query_vector = self.model.encode(query).tolist()
+
+        search_filter = Filter(
+            must=[
+                FieldCondition(
+                    key="category",
+                    match=MatchAny(any=categories),
+                )
+            ]
+        )
+
+        results = self.client.query_points(
+            collection_name=COLLECTION_NAME,
+            query=query_vector,
+            query_filter=search_filter,
+            limit=top_k,
+        ).points
 
         scored: list[RetrievedEntry] = []
-        compliance: list[RetrievedEntry] = []
+        for result in results:
+            payload = result.payload
+            scored.append(
+                RetrievedEntry(
+                    id=payload.get("entry_id", ""),
+                    category=payload.get("category", ""),
+                    subcategory=payload.get("subcategory", ""),
+                    content=payload.get("content", ""),
+                    follow_up_action=payload.get("follow_up_action"),
+                    score=round(result.score, 3),
+                )
+            )
 
-        for entry in self.entries:
-            entry_category = entry.get("category", "")
-
-            # --- Compliance: always included, no scoring needed ---
-            if include_compliance and entry_category == "compliance_rules":
-                # Only include compliance entries that are either:
-                # - General rules (no trigger phrases) → always relevant
-                # - Triggered by prospect's words (e.g., "do not call")
-                triggers = entry.get("trigger_phrases", [])
-                if not triggers or self._has_phrase_match(query_lower, triggers):
-                    compliance.append(self._to_retrieved_entry(entry, score=1.0))
-                continue
-
-            # --- Category filter: skip entries not relevant to current state ---
-            if entry_category not in categories:
-                continue
-
-            # --- Score by keyword/phrase matching ---
-            score = self._score_entry(query_lower, query_words, entry)
-            if score > 0:
-                scored.append(self._to_retrieved_entry(entry, score))
-
-        # Sort scored results by relevance, take top_k
-        scored.sort(key=lambda e: e.score, reverse=True)
-        top_results = scored[:top_k]
-
-        # Compliance first, then scored results
-        return compliance + top_results
-
-    def _score_entry(
-        self, query_lower: str, query_words: set[str], entry: dict
-    ) -> float:
-        """
-        Score a knowledge entry against the prospect's query.
-
-        Scoring logic (simple, effective):
-        - Exact phrase match in trigger_phrases → 3.0 points per match
-        - Individual word overlap with trigger_phrases → 1.0 per word
-        - Boost by effectiveness_score if available
-
-        This is the part you replace with vector similarity when
-        moving to Qdrant.
-        """
-        trigger_phrases = entry.get("trigger_phrases", [])
-        if not trigger_phrases:
-            return 0.0
-
-        score = 0.0
-
-        # --- Exact phrase matching (highest signal) ---
-        for phrase in trigger_phrases:
-            phrase_lower = phrase.lower()
-            if phrase_lower in query_lower:
-                score += 3.0
-
-        # --- Word-level overlap ---
-        trigger_words = set()
-        for phrase in trigger_phrases:
-            for word in phrase.lower().split():
-                trigger_words.add(word)
-
-        overlap = query_words & trigger_words
-        score += len(overlap) * 1.0
-
-        # --- Boost by historical effectiveness ---
-        effectiveness = entry.get("effectiveness_score")
-        if effectiveness is not None and score > 0:
-            score *= (0.5 + effectiveness)  # Range: 0.5x to 1.5x
-
-        return round(score, 3)
-
-    def _has_phrase_match(self, query_lower: str, trigger_phrases: list[str]) -> bool:
-        """Check if any trigger phrase appears in the query."""
-        return any(phrase.lower() in query_lower for phrase in trigger_phrases)
+        return compliance + scored
 
     def _to_retrieved_entry(self, entry: dict, score: float) -> RetrievedEntry:
         """Convert a raw dict entry to a typed RetrievedEntry."""

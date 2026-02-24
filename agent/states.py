@@ -10,7 +10,7 @@ class CallState(str, Enum):
     RAPPORT = "RAPPORT"
     DISCOVERY = "DISCOVERY"
     PITCH = "PITCH"
-    OBJECTION = "OBJECTION" 
+    OBJECTION = "OBJECTION"
     CLOSE = "CLOSE"
     WRAP_UP = "WRAP_UP"
     VOICEMAIL = "VOICEMAIL"
@@ -20,7 +20,7 @@ class Trigger(str, Enum):
 
     # These are the events that cause or generate state transitions
     # Greeting -> Rapport ---- Cause: user_prompt = "Hello, this is Jaime" and the
-    
+
     # Greeting triggers:
     CORRECT_PERSON = "CORRECT_PERSON"
     WRONG_PERSON = "WRONG_PERSON"
@@ -256,7 +256,7 @@ class StateMachine():
         return self.current_state == CallState.END
 
     def get_valid_triggers(self) -> list[Trigger]:
-        """What triggers are valid from the current state? 
+        """What triggers are valid from the current state?
         Pass these to the LLM so it only picks from valid options."""
         return self.config.allowed_triggers
 
