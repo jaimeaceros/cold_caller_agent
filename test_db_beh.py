@@ -36,7 +36,7 @@ LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "1024"))
 if "azure" in LLM_BASE_URL or "ai.azure.com" in LLM_BASE_URL:
     LLM_PROVIDER = "azure"
 
-print(f"🔧 Provider: {LLM_PROVIDER} | Model: {LLM_MODEL}")
+print(f"Provider: {LLM_PROVIDER} | Model: {LLM_MODEL}")
 print(f"   Endpoint: {LLM_BASE_URL}")
 
 # --- COSMOS DB CLIENT ---
@@ -178,16 +178,16 @@ def call_llm(system_prompt: str, user_message: str = None, debug: bool = True) -
         content = response.json()["choices"][0]["message"]["content"]
     except httpx.HTTPStatusError as e:
         error_detail = e.response.text[:300] if e.response else "no response body"
-        print(f"\n❌ LLM HTTP Error {e.response.status_code}:")
+        print(f"\nLLM HTTP Error {e.response.status_code}:")
         print(f"   {error_detail}")
         return {"spoken_response": f"[HTTP {e.response.status_code}]", "meta": {}, "parse_error": True}
     except Exception as e:
-        print(f"\n❌ LLM Error: {e}")
+        print(f"\nLLM Error: {e}")
         return {"spoken_response": f"[LLM ERROR: {e}]", "meta": {}, "parse_error": True}
 
     # --- Debug output ---
     if debug:
-        print(f"\n🔍 RAW LLM RESPONSE ({len(content)} chars):")
+        print(f"\nRAW LLM RESPONSE ({len(content)} chars):")
         print(content[:500])
         if len(content) > 500:
             print(f"... ({len(content) - 500} more chars)")
@@ -216,7 +216,7 @@ def call_llm(system_prompt: str, user_message: str = None, debug: bool = True) -
             return {"spoken_response": str(parsed), "meta": {}, "parse_error": True}
     except (json.JSONDecodeError, AttributeError) as e:
         if debug:
-            print(f"⚠️  JSON parse failed: {e}")
+            print(f"JSON parse failed: {e}")
         return {"spoken_response": content[:500], "meta": {}, "parse_error": True}
 
 
@@ -226,16 +226,16 @@ def call_llm(system_prompt: str, user_message: str = None, debug: bool = True) -
 
 def display_result(result: dict):
     if result.get("parse_error"):
-        print("\n⚠️  Response was not valid JSON:")
+        print("\nResponse was not valid JSON:")
         print(f"   {result.get('spoken_response', 'NO RESPONSE')[:500]}")
         return
 
-    print(f"\n🗣️  AGENT SAYS:")
+    print(f"\nAGENT SAYS:")
     print(f"   \"{result.get('spoken_response', 'NO RESPONSE')}\"")
 
     meta = result.get("meta", {})
     if meta:
-        print(f"\n📊 METADATA:")
+        print(f"\nMETADATA:")
         for key, value in meta.items():
             if value is not None and value != [] and value != {} and value is not False:
                 print(f"   {key}: {value}")
@@ -283,7 +283,7 @@ def run_conversation(lead_id: str):
         print(f"{'─'*40}")
 
         if prospect_msg:
-            print(f"\n👤 PROSPECT: \"{prospect_msg}\"")
+            print(f"\nPROSPECT: \"{prospect_msg}\"")
             conversation_history.append({"role": "prospect", "content": prospect_msg})
 
         history_text = ""
@@ -328,7 +328,7 @@ def run_interactive(lead_id: str):
         if turn == 1:
             prospect_msg = None
         else:
-            prospect_msg = input("\n👤 YOU (prospect): ").strip()
+            prospect_msg = input("\nYOU (prospect): ").strip()
             if prospect_msg.lower() in ("quit", "exit", "q"):
                 break
             conversation_history.append({"role": "prospect", "content": prospect_msg})
@@ -357,7 +357,7 @@ def run_interactive(lead_id: str):
         terminal_outcomes = {"meeting_booked", "not_interested", "wrong_person", "voicemail_left", "escalated", "do_not_call", "follow_up_scheduled"}
         outcome = result.get("meta", {}).get("call_outcome")
         if outcome in terminal_outcomes:
-            print(f"\n✅ Call ended — outcome: {outcome}")
+            print(f"\nCall ended -- outcome: {outcome}")
             break
 
     print(f"\n{'='*60}")
@@ -365,9 +365,6 @@ def run_interactive(lead_id: str):
     print(f"{'='*60}")
 
 
-# ============================================================
-# ENTRY POINT
-# ============================================================
 
 if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "single"
