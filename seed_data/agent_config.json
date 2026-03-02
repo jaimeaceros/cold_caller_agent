@@ -1,0 +1,56 @@
+[
+  {
+    "id": "prompt_config",
+    "config_type": "prompt",
+    "data": {
+      "active_version": "system_prompt_v1.md",
+      "blob_container": "prompts",
+      "blob_path": "cold_caller/",
+      "ab_test": null
+    },
+    "updated_at": "2026-02-27T00:00:00Z",
+    "updated_by": "initial_setup"
+  },
+  {
+    "id": "model_config",
+    "config_type": "model",
+    "data": {
+      "provider": "azure_ai_foundry",
+      "model": "gpt-4o-mini",
+      "temperature": 0.7,
+      "max_tokens": 500,
+      "embedding_model": "text-embedding-3-small",
+      "embedding_dimensions": 1536
+    },
+    "updated_at": "2026-02-27T00:00:00Z",
+    "updated_by": "initial_setup"
+  },
+  {
+    "id": "feature_flags",
+    "config_type": "features",
+    "data": {
+      "real_time_objection_search": false,
+      "sentiment_detection": false,
+      "auto_escalation": true,
+      "talk_ratio_monitoring": false,
+      "vector_search_enabled": false,
+      "pre_call_knowledge_injection": true
+    },
+    "updated_at": "2026-02-27T00:00:00Z",
+    "updated_by": "initial_setup"
+  },
+  {
+    "id": "agent_identity",
+    "config_type": "agent",
+    "data": {
+      "agent_name": "Paula Lorena",
+      "company_name": "PipelineAI",
+      "callback_number": "+1-888-555-7473",
+      "qualifying_framework": "BANT",
+      "voicemail_hook": "I work with sales teams that want to 3x their pipeline using AI-powered outbound — thought it might be relevant given what you're building.",
+      "additional_compliance_rules": "Always identify yourself as calling from PipelineAI within the first 10 seconds of the call."
+    },
+    "updated_at": "2026-02-27T00:00:00Z",
+    "updated_by": "initial_setup"
+  }
+]

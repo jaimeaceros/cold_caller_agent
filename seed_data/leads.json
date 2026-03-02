@@ -1,0 +1,197 @@
+[
+  {
+    "id": "lead_001",
+    "company_id": "comp_techcorp",
+    "contact": {
+      "name": "Sarah Chen",
+      "title": "VP of Sales",
+      "email": "sarah.chen@techcorp.io",
+      "phone": "+1-415-555-0101",
+      "linkedin_url": "https://linkedin.com/in/sarahchen"
+    },
+    "company": {
+      "name": "TechCorp",
+      "industry": "saas",
+      "size": "smb",
+      "employee_count": 55,
+      "location": "San Francisco, CA",
+      "tech_stack": ["Salesforce", "Outreach", "ZoomInfo", "Slack"]
+    },
+    "enrichment": {
+      "recent_news": "TechCorp just closed a $12M Series A led by Sequoia. They posted 3 SDR job listings on LinkedIn last week.",
+      "hiring_signals": "3 SDR positions open, 1 Sales Manager position open",
+      "funding_stage": "Series A",
+      "enriched_at": "2026-02-25T10:00:00Z"
+    },
+    "call_plan": {
+      "hook": "Congrats on the Series A — saw you're hiring 3 SDRs. Scaling outbound is probably top of mind.",
+      "pain_hypothesis": "Scaling outbound with a small team post-funding. Adding headcount is expensive and slow — they need more output from fewer reps.",
+      "primary_objective": "Book a 15-minute demo for next week",
+      "fallback_objective": "Send a relevant case study and schedule a follow-up call",
+      "objection_prep": ["already using Outreach", "too early to switch tools", "not the right time — just closed funding"],
+      "generated_at": "2026-02-25T10:05:00Z"
+    },
+    "call_history": [],
+    "lead_score": 72,
+    "status": "new",
+    "do_not_call": false,
+    "created_at": "2026-02-25T09:00:00Z",
+    "updated_at": "2026-02-25T10:05:00Z"
+  },
+  {
+    "id": "lead_002",
+    "company_id": "comp_datastack",
+    "contact": {
+      "name": "Marcus Johnson",
+      "title": "Head of Revenue",
+      "email": "marcus@datastack.com",
+      "phone": "+1-212-555-0202",
+      "linkedin_url": "https://linkedin.com/in/marcusjohnson"
+    },
+    "company": {
+      "name": "DataStack",
+      "industry": "saas",
+      "size": "mid_market",
+      "employee_count": 180,
+      "location": "New York, NY",
+      "tech_stack": ["HubSpot", "SalesLoft", "Clearbit", "Gong"]
+    },
+    "enrichment": {
+      "recent_news": "DataStack launched a new enterprise product tier last month. CEO quoted in TechCrunch about aggressive 2026 growth targets.",
+      "hiring_signals": "6 SDR positions, 2 AE positions open",
+      "funding_stage": "Series B",
+      "enriched_at": "2026-02-24T14:00:00Z"
+    },
+    "call_plan": {
+      "hook": "Saw the new enterprise tier launch — congrats. Sounds like you're pushing upmarket, which usually means the outbound motion needs to level up too.",
+      "pain_hypothesis": "Moving upmarket requires more sophisticated, personalized outreach. Enterprise prospects ignore generic sequences. Current SalesLoft setup is cadence-driven and not adapting.",
+      "primary_objective": "Book a 15-minute demo for next week",
+      "fallback_objective": "Get agreement to send enterprise case study and follow up",
+      "objection_prep": ["already using SalesLoft", "too busy with product launch", "need to involve CRO"],
+      "generated_at": "2026-02-24T14:10:00Z"
+    },
+    "call_history": [],
+    "lead_score": 68,
+    "status": "new",
+    "do_not_call": false,
+    "created_at": "2026-02-24T13:00:00Z",
+    "updated_at": "2026-02-24T14:10:00Z"
+  },
+  {
+    "id": "lead_003",
+    "company_id": "comp_swiftpay",
+    "contact": {
+      "name": "Rachel Torres",
+      "title": "Director of Sales Development",
+      "email": "rtorres@swiftpay.com",
+      "phone": "+1-512-555-0303",
+      "linkedin_url": "https://linkedin.com/in/racheltorres"
+    },
+    "company": {
+      "name": "SwiftPay",
+      "industry": "fintech",
+      "size": "mid_market",
+      "employee_count": 120,
+      "location": "Austin, TX",
+      "tech_stack": ["Salesforce", "Apollo", "Slack", "Gong"]
+    },
+    "enrichment": {
+      "recent_news": "SwiftPay expanded into European markets Q4 2025. Published a blog post about challenges scaling international sales teams.",
+      "hiring_signals": "4 SDR positions (2 US, 2 London), 1 Sales Ops role",
+      "funding_stage": "Series B",
+      "enriched_at": "2026-02-23T11:00:00Z"
+    },
+    "call_plan": {
+      "hook": "Saw you're expanding into Europe — scaling outbound across multiple regions is a challenge we help a lot of teams with.",
+      "pain_hypothesis": "International expansion means new markets, new personas, new messaging — hard to personalize at scale across regions. Apollo's basic sequences won't cut it for European enterprise buyers.",
+      "primary_objective": "Book a 15-minute demo for next week",
+      "fallback_objective": "Send the PayBridge fintech case study and schedule follow-up",
+      "objection_prep": ["already using Apollo", "too busy with expansion", "need to standardize before adding tools"],
+      "generated_at": "2026-02-23T11:10:00Z"
+    },
+    "call_history": [],
+    "lead_score": 75,
+    "status": "new",
+    "do_not_call": false,
+    "created_at": "2026-02-23T10:00:00Z",
+    "updated_at": "2026-02-23T11:10:00Z"
+  },
+  {
+    "id": "lead_004",
+    "company_id": "comp_shieldnet",
+    "contact": {
+      "name": "David Kim",
+      "title": "CRO",
+      "email": "dkim@shieldnet.io",
+      "phone": "+1-617-555-0404",
+      "linkedin_url": "https://linkedin.com/in/davidkim-cro"
+    },
+    "company": {
+      "name": "ShieldNet",
+      "industry": "cybersecurity",
+      "size": "enterprise",
+      "employee_count": 350,
+      "location": "Boston, MA",
+      "tech_stack": ["Salesforce", "Outreach", "6sense", "Clari"]
+    },
+    "enrichment": {
+      "recent_news": "ShieldNet announced FedRAMP authorization last month. Expanding into government and defense verticals.",
+      "hiring_signals": "8 SDR positions, 4 AE positions, new VP Marketing role",
+      "funding_stage": "Series C",
+      "enriched_at": "2026-02-22T09:00:00Z"
+    },
+    "call_plan": {
+      "hook": "Congrats on the FedRAMP authorization — that opens up a huge market. I imagine the outbound motion for government buyers looks pretty different from commercial.",
+      "pain_hypothesis": "Government and defense buyers require highly specific, compliant, and technical messaging. Generic SDR outreach won't work. They need AI that understands the cybersecurity + gov space to personalize at the level these buyers expect.",
+      "primary_objective": "Book a 30-minute demo including their VP Sales",
+      "fallback_objective": "Send NexGen Security case study (cybersecurity enterprise) and schedule follow-up with VP Sales",
+      "objection_prep": ["already using Outreach", "enterprise deal — long procurement", "need to involve VP Sales and IT security"],
+      "generated_at": "2026-02-22T09:15:00Z"
+    },
+    "call_history": [],
+    "lead_score": 82,
+    "status": "new",
+    "do_not_call": false,
+    "created_at": "2026-02-22T08:00:00Z",
+    "updated_at": "2026-02-22T09:15:00Z"
+  },
+  {
+    "id": "lead_005",
+    "company_id": "comp_pixelcraft",
+    "contact": {
+      "name": "Amy Liu",
+      "title": "Founder & CEO",
+      "email": "amy@pixelcraft.io",
+      "phone": "+1-310-555-0505",
+      "linkedin_url": "https://linkedin.com/in/amyliu-pixelcraft"
+    },
+    "company": {
+      "name": "PixelCraft",
+      "industry": "martech",
+      "size": "smb",
+      "employee_count": 15,
+      "location": "Los Angeles, CA",
+      "tech_stack": ["HubSpot", "Instantly", "LinkedIn Sales Navigator"]
+    },
+    "enrichment": {
+      "recent_news": "PixelCraft featured in a MarTech Today article about emerging design automation tools. Founder posted on LinkedIn about hitting $1M ARR.",
+      "hiring_signals": "1 SDR position, first dedicated sales hire",
+      "funding_stage": "Seed",
+      "enriched_at": "2026-02-26T08:00:00Z"
+    },
+    "call_plan": {
+      "hook": "Congrats on hitting $1M ARR — saw Amy's post. Hiring your first SDR is a big step. Getting them productive fast is everything.",
+      "pain_hypothesis": "First sales hire at a seed-stage startup. No outbound infrastructure yet. Using Instantly for volume but reply rates are probably low. Needs to maximize output from a single SDR.",
+      "primary_objective": "Book a 15-minute demo",
+      "fallback_objective": "Send the GrowthLabs case study (small MarTech company, Apollo complement) and follow up",
+      "objection_prep": ["too early stage", "using Instantly and it's cheap", "just one SDR — not worth it yet", "founder doing sales herself"],
+      "generated_at": "2026-02-26T08:10:00Z"
+    },
+    "call_history": [],
+    "lead_score": 58,
+    "status": "new",
+    "do_not_call": false,
+    "created_at": "2026-02-26T07:00:00Z",
+    "updated_at": "2026-02-26T08:10:00Z"
+  }
+]
