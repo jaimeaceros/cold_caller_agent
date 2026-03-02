@@ -10,9 +10,15 @@ Usage:
     python test_db_beh.py prompt lead_001           # Print assembled prompt
 """
 
+import io
 import json
 import os
 import re
+import sys
+
+# Force UTF-8 output on Windows to avoid cp1252 encoding errors from LLM responses
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8")
 import sys
 import httpx
 from azure.cosmos import CosmosClient
@@ -278,9 +284,9 @@ def run_conversation(lead_id: str):
     ]
 
     for i, prospect_msg in enumerate(prospect_turns):
-        print(f"\n{'─'*40}")
+        print(f"\n{'-'*40}")
         print(f"  Turn {i+1}")
-        print(f"{'─'*40}")
+        print(f"{'-'*40}")
 
         if prospect_msg:
             print(f"\nPROSPECT: \"{prospect_msg}\"")
@@ -323,7 +329,7 @@ def run_interactive(lead_id: str):
 
     while True:
         turn += 1
-        print(f"\n{'─'*40} Turn {turn} {'─'*40}")
+        print(f"\n{'-'*40} Turn {turn} {'-'*40}")
 
         if turn == 1:
             prospect_msg = None
@@ -353,12 +359,17 @@ def run_interactive(lead_id: str):
         else:
             conversation_history.append({"role": "agent", "content": result.get("spoken_response", "")[:200]})
 
-        # End the loop on any terminal call outcome
+        # Allow a few goodbye turns after a terminal outcome before ending
         terminal_outcomes = {"meeting_booked", "not_interested", "wrong_person", "voicemail_left", "escalated", "do_not_call", "follow_up_scheduled"}
         outcome = result.get("meta", {}).get("call_outcome")
         if outcome in terminal_outcomes:
-            print(f"\nCall ended -- outcome: {outcome}")
-            break
+            if not hasattr(run_interactive, '_goodbye_turns'):
+                run_interactive._goodbye_turns = 0
+                print(f"\n-- outcome reached: {outcome} -- allowing goodbye exchange --")
+            run_interactive._goodbye_turns += 1
+            if run_interactive._goodbye_turns > 2:
+                print(f"\nCall ended -- outcome: {outcome}")
+                break
 
     print(f"\n{'='*60}")
     print("CALL ENDED")
