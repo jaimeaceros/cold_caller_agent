@@ -353,6 +353,13 @@ def run_interactive(lead_id: str):
         else:
             conversation_history.append({"role": "agent", "content": result.get("spoken_response", "")[:200]})
 
+        # End the loop on any terminal call outcome
+        terminal_outcomes = {"meeting_booked", "not_interested", "wrong_person", "voicemail_left", "escalated", "do_not_call", "follow_up_scheduled"}
+        outcome = result.get("meta", {}).get("call_outcome")
+        if outcome in terminal_outcomes:
+            print(f"\n✅ Call ended — outcome: {outcome}")
+            break
+
     print(f"\n{'='*60}")
     print("CALL ENDED")
     print(f"{'='*60}")
