@@ -104,7 +104,7 @@ def assemble_prompt(lead_id: str) -> str:
     case_studies = fetch_knowledge("case_study")
     qualifying = fetch_knowledge("qualifying")
 
-    with open("system_prompt_v1.md", "r") as f:
+    with open("system_prompt_v2.md", "r") as f:
         template = f.read()
 
     template = template.replace("{{AGENT_NAME}}", agent.get("agent_name", "Alex"))

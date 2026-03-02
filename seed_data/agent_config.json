@@ -3,7 +3,7 @@
     "id": "prompt_config",
     "config_type": "prompt",
     "data": {
-      "active_version": "system_prompt_v1.md",
+      "active_version": "system_prompt_v2.md",
       "blob_container": "prompts",
       "blob_path": "cold_caller/",
       "ab_test": null

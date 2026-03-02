@@ -106,7 +106,7 @@ class AgentBrain:
             self.llm_provider = "azure"
 
         # Prompt template (local file for now — Blob Storage later)
-        self.prompt_template_path = os.environ.get("PROMPT_TEMPLATE_PATH", "system_prompt_v1.md")
+        self.prompt_template_path = os.environ.get("PROMPT_TEMPLATE_PATH", "system_prompt_v2.md")
         self._prompt_template: str | None = None
 
         logger.info(f"LLM provider: {self.llm_provider} | model: {self.llm_model} | base_url: {self.llm_base_url}")
