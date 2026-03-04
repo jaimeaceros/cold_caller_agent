@@ -7,7 +7,7 @@ All database queries live here. The brain never talks to Cosmos directly.
 import os
 from functools import lru_cache
 from azure.cosmos import CosmosClient
-
+from azure.storage.blob import BlobServiceClient
 
 
 _client: CosmosClient | None = None
@@ -110,6 +110,28 @@ def write_call_log(call_log: dict):
 # FORMATTING — Prepare data for prompt injection
 # ============================================================
 
+def search_knowledge_base(query: str, category: str = None) -> str:
+    """Search knowledge base by keyword match. Called by Realtime API tool calls."""
+    results = []
+    categories = [category] if category else ["product", "objection", "competitor", "case_study"]
+    for cat in categories:
+        items = fetch_knowledge(cat)
+        for item in items:
+            content = item.get("content", "")
+            title = item.get("title", item.get("id", ""))
+            if query.lower() in content.lower() or query.lower() in title.lower():
+                results.append(f"[{item['id']}] {title}: {content}")
+
+    if not results:
+        # Return top items from the category if no keyword match
+        if category:
+            items = fetch_knowledge(category)
+            for item in items[:3]:
+                results.append(f"[{item['id']}] {item.get('title', item['id'])}: {item['content']}")
+
+    return "\n\n".join(results[:5]) if results else "No relevant knowledge found."
+
+
 def format_knowledge_for_prompt(items: list[dict]) -> str:
     """Format knowledge base items into prompt-ready text."""
     if not items:
@@ -127,3 +149,35 @@ def format_knowledge_for_prompt(items: list[dict]) -> str:
         lines.append("")
 
     return "\n".join(lines)
+
+# ============================================================
+# BLOB STORAGE — Prompt template loading
+# ============================================================
+
+_blob_client: BlobServiceClient | None = None
+
+
+def get_blob_client():
+    global _blob_client
+    if _blob_client is None:
+        conn_str = os.environ.get("BLOB_CONNECTION_STRING", "")
+        if not conn_str:
+            raise ValueError("BLOB_CONNECTION_STRING not set")
+        _blob_client = BlobServiceClient.from_connection_string(conn_str)
+    return _blob_client
+
+
+def fetch_prompt_template(container: str = "prompts", blob_path: str = None) -> str:
+    """Fetch prompt template from Blob Storage. Uses agent_config to resolve path if not specified."""
+    client = get_blob_client()
+
+    if not blob_path:
+        # Get path from agent_config in Cosmos DB
+        config = fetch_agent_config()
+        prompt_config = config.get("prompt_config", {})
+        folder = prompt_config.get("blob_path", "cold_caller/")
+        filename = prompt_config.get("active_version", "system_prompt_v2.md")
+        blob_path = f"{folder}{filename}"
+
+    blob_client = client.get_blob_client(container=container, blob=blob_path)
+    return blob_client.download_blob().readall().decode("utf-8")
