@@ -295,9 +295,21 @@ async function startMic() {
 
   // ScriptProcessorNode — bufferSize 4096 = ~170ms chunks at 24kHz
   scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
+  // Noise gate threshold — audio chunks below this RMS level are
+  // treated as silence and not sent, preventing ambient office noise
+  // (AC, keyboard, distant chatter) from reaching the Realtime API.
+  const NOISE_GATE_THRESHOLD = 0.01;
+
   scriptNode.onaudioprocess = (e) => {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     const float32 = e.inputBuffer.getChannelData(0);
+
+    // Noise gate: compute RMS and skip quiet chunks
+    let sumSq = 0;
+    for (let i = 0; i < float32.length; i++) sumSq += float32[i] * float32[i];
+    const rms = Math.sqrt(sumSq / float32.length);
+    if (rms < NOISE_GATE_THRESHOLD) return;
+
     const int16 = new Int16Array(float32.length);
     for (let i = 0; i < float32.length; i++) {
       const s = Math.max(-1, Math.min(1, float32[i]));
