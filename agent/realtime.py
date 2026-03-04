@@ -202,6 +202,8 @@ def assemble_realtime_prompt(lead: dict, knowledge: dict, agent_config: dict) ->
     # Lead context
     template = template.replace("{{LEAD_CONTEXT}}", "")
     template = template.replace("{{PROSPECT_NAME}}", lead["contact"]["name"])
+    prospect_first_name = lead["contact"]["name"].split()[0]
+    template = template.replace("{{PROSPECT_FIRST_NAME}}", prospect_first_name)
     template = template.replace("{{PROSPECT_TITLE}}", lead["contact"]["title"])
     template = template.replace("{{COMPANY}}", lead["company"]["name"])
     template = template.replace("{{INDUSTRY}}", lead["company"]["industry"])
@@ -432,7 +434,8 @@ class RealtimeSession:
                 "turn_detection": {
                     "type": "server_vad",
                     "threshold": 0.5,
-                    "silence_duration_ms": 500,
+                    "prefix_padding_ms": 300,
+                    "silence_duration_ms": 1200,
                 },
             })
         else:
@@ -667,6 +670,10 @@ class RealtimeSession:
 
             # --- VAD events ---
             elif event_type == "input_audio_buffer.speech_started":
+                # Cancel in-progress response to prevent double-speech.
+                # Server VAD auto-triggers new response.create after user finishes.
+                await self.ws.send(json.dumps({"type": "response.cancel"}))
+                logger.debug("Sent response.cancel on speech_started")
                 if self.on_speech_started:
                     await self.on_speech_started()
 
