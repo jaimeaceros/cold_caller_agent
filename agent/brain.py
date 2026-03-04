@@ -116,13 +116,19 @@ class AgentBrain:
     # -------------------------------------------------------------------
 
     def _load_prompt_template(self) -> str:
-        """Load and cache the prompt template."""
+        """Load and cache the prompt template from Blob Storage (falls back to local file)."""
         if self._prompt_template is None:
-            path = Path(self.prompt_template_path)
-            if not path.exists():
-                raise FileNotFoundError(f"Prompt template not found: {path}")
-            self._prompt_template = path.read_text(encoding="utf-8")
-            logger.info(f"Loaded prompt template: {len(self._prompt_template)} chars")
+            try:
+                from agent.cosmos import fetch_prompt_template
+                self._prompt_template = fetch_prompt_template()
+                logger.info(f"Loaded prompt from Blob Storage: {len(self._prompt_template)} chars")
+            except Exception as e:
+                logger.warning(f"Blob fetch failed ({e}), falling back to local file")
+                path = Path(self.prompt_template_path)
+                if not path.exists():
+                    raise FileNotFoundError(f"Prompt template not found locally either: {path}")
+                self._prompt_template = path.read_text(encoding="utf-8")
+                logger.info(f"Loaded prompt from local file: {len(self._prompt_template)} chars")
         return self._prompt_template
 
     def reload_prompt(self):

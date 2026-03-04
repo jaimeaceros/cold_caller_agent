@@ -110,8 +110,24 @@ def assemble_prompt(lead_id: str) -> str:
     case_studies = fetch_knowledge("case_study")
     qualifying = fetch_knowledge("qualifying")
 
-    with open("system_prompt_v2.md", "r") as f:
-        template = f.read()
+    try:
+        from azure.storage.blob import BlobServiceClient
+        blob_conn = os.environ.get("BLOB_CONNECTION_STRING", "")
+        if blob_conn:
+            blob_client = BlobServiceClient.from_connection_string(blob_conn)
+            # Get active version from agent config
+            prompt_config = config.get("prompt_config", {})
+            folder = prompt_config.get("blob_path", "cold_caller/")
+            filename = prompt_config.get("active_version", "system_prompt_v2.md")
+            blob = blob_client.get_blob_client(container="prompts", blob=f"{folder}{filename}")
+            template = blob.download_blob().readall().decode("utf-8")
+            print(f"📄 Loaded prompt from Blob Storage: {folder}{filename}")
+        else:
+            raise ValueError("No BLOB_CONNECTION_STRING")
+    except Exception as e:
+        print(f"📄 Blob unavailable ({e}), using local file")
+        with open("system_prompt_v2.md", "r") as f:
+            template = f.read()
 
     template = template.replace("{{AGENT_NAME}}", agent.get("agent_name", "Alex"))
     template = template.replace("{{COMPANY_NAME}}", agent.get("company_name", "PipelineAI"))

@@ -5,6 +5,10 @@ Uses the same Cosmos data layer, prompt template system, and session tracking
 as the REST path (agent/brain.py), but communicates over WebSocket using the
 Azure OpenAI Realtime API.  The model speaks naturally and reports metadata
 via tool calls instead of structured JSON output.
+
+Supports two modes:
+  - "text"  — request/response style (used by test_realtime.py)
+  - "audio" — continuous event loop with PCM16 audio streaming (used by browser voice client)
 """
 
 import asyncio
@@ -13,6 +17,7 @@ import logging
 import os
 import time
 from pathlib import Path
+from typing import Callable, Awaitable
 
 from agent.cosmos import (
     fetch_lead,
@@ -26,6 +31,9 @@ from agent.brain import CallSession, ConversationTurn
 from agent.models import TurnMeta, QualifyingData
 
 logger = logging.getLogger(__name__)
+
+# Type alias for async callbacks
+AsyncCallback = Callable[..., Awaitable[None]]
 
 # ============================================================
 # CONFIG
@@ -318,15 +326,31 @@ class RealtimeSession:
 
     Integrates with the production data layer (agent/cosmos.py) and session
     tracking (CallSession from agent/brain.py).
+
+    Modes:
+        "text"  — text-only, request/response style (process_events)
+        "audio" — audio + text, continuous event loop (run_event_loop)
     """
 
-    def __init__(self):
+    def __init__(self, mode: str = "text"):
+        self.mode = mode
         self.ws = None
         self.session: CallSession | None = None
         self.metadata_log: list[dict] = []
         self.knowledge_queries: list[dict] = []
         self.call_ended: bool = False
         self.call_outcome: dict | None = None
+
+        # Audio-mode async callbacks (set by the WebSocket proxy)
+        self.on_audio_delta: AsyncCallback | None = None
+        self.on_audio_done: AsyncCallback | None = None
+        self.on_transcript_delta: AsyncCallback | None = None
+        self.on_transcript_done: AsyncCallback | None = None
+        self.on_input_transcript: AsyncCallback | None = None
+        self.on_speech_started: AsyncCallback | None = None
+        self.on_speech_stopped: AsyncCallback | None = None
+        self.on_call_ended: AsyncCallback | None = None
+        self.on_error: AsyncCallback | None = None
 
     # ----- lifecycle -----
 
@@ -384,28 +408,49 @@ class RealtimeSession:
         """Send session.update with system prompt and tools.
 
         If no prompt is passed, uses the session's assembled prompt with
-        history injected.
+        history injected.  Configuration adapts to self.mode.
         """
         if system_prompt is None:
             if self.session is None:
                 raise ValueError("No CallSession — call init_call_session first or pass a prompt")
             system_prompt = inject_history(self.session.system_prompt, self.session.history)
 
+        session_config = {
+            "instructions": system_prompt,
+            "tools": TOOLS,
+            "tool_choice": "auto",
+            "temperature": 0.7,
+        }
+
+        if self.mode == "audio":
+            session_config.update({
+                "modalities": ["text", "audio"],
+                "voice": "alloy",
+                "input_audio_format": "pcm16",
+                "output_audio_format": "pcm16",
+                "input_audio_transcription": {"model": "whisper-1"},
+                "turn_detection": {
+                    "type": "server_vad",
+                    "threshold": 0.5,
+                    "silence_duration_ms": 500,
+                },
+            })
+        else:
+            session_config["modalities"] = ["text"]
+
         config = {
             "type": "session.update",
-            "session": {
-                "modalities": ["text"],
-                "instructions": system_prompt,
-                "tools": TOOLS,
-                "tool_choice": "auto",
-                "temperature": 0.7,
-            }
+            "session": session_config,
         }
 
         await self.ws.send(json.dumps(config))
-        print(f"📋 Session configured (text-only, {len(TOOLS)} tools)")
+        logger.info(f"Session configured: mode={self.mode}, tools={len(TOOLS)}")
 
     # ----- messaging -----
+
+    def _response_modalities(self) -> list[str]:
+        """Return the modality list for response.create based on mode."""
+        return ["text", "audio"] if self.mode == "audio" else ["text"]
 
     async def send_text(self, text: str = None):
         """Send a text message and trigger a response."""
@@ -442,8 +487,18 @@ class RealtimeSession:
         await self.ws.send(json.dumps({
             "type": "response.create",
             "response": {
-                "modalities": ["text"]
+                "modalities": self._response_modalities()
             }
+        }))
+
+    async def send_audio(self, base64_audio: str):
+        """Forward base64-encoded PCM16 audio to the Realtime API input buffer.
+
+        Server VAD handles commit automatically — no manual commit needed.
+        """
+        await self.ws.send(json.dumps({
+            "type": "input_audio_buffer.append",
+            "audio": base64_audio,
         }))
 
     # ----- event processing -----
@@ -534,6 +589,152 @@ class RealtimeSession:
 
         return full_text
 
+    # ----- audio-mode event loop -----
+
+    async def run_event_loop(self):
+        """Continuous async event loop for audio-mode calls.
+
+        Runs for the entire call lifetime. Dispatches events to callbacks
+        set by the WebSocket proxy. Handles function calls inline.
+        """
+        pending_function_calls = {}
+        current_transcript = ""
+
+        while not self.call_ended:
+            try:
+                msg = await asyncio.wait_for(self.ws.recv(), timeout=60.0)
+            except asyncio.TimeoutError:
+                logger.warning("Event loop: 60s timeout, continuing...")
+                continue
+            except Exception as e:
+                logger.error(f"Event loop recv error: {e}")
+                if self.on_error:
+                    await self.on_error(str(e))
+                break
+
+            event = json.loads(msg)
+            event_type = event.get("type", "")
+
+            # --- Audio streaming ---
+            if event_type == "response.audio.delta":
+                if self.on_audio_delta:
+                    await self.on_audio_delta(event.get("delta", ""))
+
+            elif event_type == "response.audio.done":
+                if self.on_audio_done:
+                    await self.on_audio_done()
+
+            # --- Agent transcript (speech-to-text of agent audio) ---
+            elif event_type == "response.audio_transcript.delta":
+                current_transcript += event.get("delta", "")
+                if self.on_transcript_delta:
+                    await self.on_transcript_delta(event.get("delta", ""))
+
+            elif event_type == "response.audio_transcript.done":
+                transcript = event.get("transcript", current_transcript)
+                if self.on_transcript_done:
+                    await self.on_transcript_done(transcript)
+                # Record agent turn
+                if transcript and self.session:
+                    self.session.history.append(ConversationTurn(
+                        role="agent",
+                        content=transcript,
+                        phase=self.session.current_phase,
+                    ))
+                current_transcript = ""
+
+            # --- Text streaming (text-mode responses during audio call) ---
+            elif event_type == "response.text.delta":
+                pass  # text not used in audio mode
+            elif event_type == "response.text.done":
+                pass
+
+            # --- User input transcription (Whisper) ---
+            elif event_type == "conversation.item.input_audio_transcription.completed":
+                transcript = event.get("transcript", "")
+                if transcript and self.on_input_transcript:
+                    await self.on_input_transcript(transcript)
+                # Record prospect turn
+                if transcript and self.session:
+                    self.session.history.append(ConversationTurn(
+                        role="prospect",
+                        content=transcript,
+                        phase=self.session.current_phase,
+                    ))
+
+            elif event_type == "conversation.item.input_audio_transcription.failed":
+                logger.warning(f"Input transcription failed: {event.get('error', {})}")
+
+            # --- VAD events ---
+            elif event_type == "input_audio_buffer.speech_started":
+                if self.on_speech_started:
+                    await self.on_speech_started()
+
+            elif event_type == "input_audio_buffer.speech_stopped":
+                if self.on_speech_stopped:
+                    await self.on_speech_stopped()
+
+            elif event_type == "input_audio_buffer.committed":
+                pass  # Server VAD auto-committed
+
+            # --- Function call streaming ---
+            elif event_type == "response.function_call_arguments.delta":
+                call_id = event.get("call_id", "")
+                if call_id not in pending_function_calls:
+                    pending_function_calls[call_id] = {
+                        "name": event.get("name", ""),
+                        "arguments": ""
+                    }
+                pending_function_calls[call_id]["arguments"] += event.get("delta", "")
+
+            elif event_type == "response.function_call_arguments.done":
+                call_id = event.get("call_id", "")
+                if call_id in pending_function_calls:
+                    pending_function_calls[call_id]["arguments"] = event.get(
+                        "arguments", pending_function_calls[call_id]["arguments"]
+                    )
+                    pending_function_calls[call_id]["name"] = event.get(
+                        "name", pending_function_calls[call_id]["name"]
+                    )
+
+            # --- Response complete ---
+            elif event_type == "response.done":
+                response = event.get("response", {})
+                status = response.get("status", "unknown")
+                if status == "failed":
+                    err = response.get("status_details", {})
+                    logger.error(f"Response failed: {err}")
+                    if self.on_error:
+                        await self.on_error(f"Response failed: {err}")
+
+                # Execute any pending function calls
+                if pending_function_calls:
+                    await self._execute_function_calls(pending_function_calls)
+                    pending_function_calls = {}
+
+                # If end_call was triggered, notify
+                if self.call_ended and self.on_call_ended:
+                    await self.on_call_ended(self.call_outcome)
+
+            # --- Session events ---
+            elif event_type == "session.updated":
+                logger.debug("Session updated confirmed")
+
+            elif event_type == "session.created":
+                logger.debug("Session created (duplicate in event loop)")
+
+            # --- Errors ---
+            elif event_type == "error":
+                error = event.get("error", {})
+                logger.error(f"Realtime API error: {error}")
+                if self.on_error:
+                    await self.on_error(error.get("message", str(error)))
+
+            elif event_type == "rate_limits.updated":
+                pass
+
+        logger.info("Event loop ended")
+
     # ----- tool execution -----
 
     async def _execute_function_calls(self, calls: dict):
@@ -545,7 +746,7 @@ class RealtimeSession:
             except json.JSONDecodeError:
                 args = {}
 
-            print(f"\n   🔧 Tool call: {name}({json.dumps(args, indent=2)[:200]})")
+            logger.info(f"Tool call: {name}({json.dumps(args)[:200]})")
 
             if name == "search_knowledge_base":
                 result = search_knowledge_base(
@@ -553,23 +754,17 @@ class RealtimeSession:
                     category=args.get("category"),
                 )
                 self.knowledge_queries.append(args)
-                print(f"   📚 Knowledge result: {result[:150]}...")
 
             elif name == "report_turn_metadata":
                 if self.session:
                     _apply_turn_metadata(self.session, args)
                 self.metadata_log.append(args)
                 result = "Metadata recorded."
-                print(
-                    f"   📊 Metadata: phase={args.get('current_phase')} "
+                logger.info(
+                    f"Metadata: phase={args.get('current_phase')} "
                     f"sentiment={args.get('prospect_sentiment')} "
                     f"next={args.get('next_move', 'N/A')[:60]}"
                 )
-                if args.get("qualifying_data"):
-                    qd = args["qualifying_data"]
-                    filled = {k: v for k, v in qd.items() if v}
-                    if filled:
-                        print(f"   🎯 Qualifying: {filled}")
 
             elif name == "end_call":
                 if self.session:
@@ -577,7 +772,7 @@ class RealtimeSession:
                 self.call_ended = True
                 self.call_outcome = args
                 result = "Call ended."
-                print(f"   📞 Call ended: {args.get('outcome')} — {args.get('reason')}")
+                logger.info(f"Call ended: {args.get('outcome')} — {args.get('reason')}")
 
             else:
                 result = f"Unknown function: {name}"
@@ -592,11 +787,11 @@ class RealtimeSession:
                 }
             }))
 
-        # Trigger continuation
+        # Trigger continuation with mode-aware modalities
         await self.ws.send(json.dumps({
             "type": "response.create",
             "response": {
-                "modalities": ["text"]
+                "modalities": self._response_modalities()
             }
         }))
 

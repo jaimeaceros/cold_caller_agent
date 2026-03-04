@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cold Caller v2 - Voice Test</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f1117;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; color: #fff; }
+  .subtitle { font-size: 0.85rem; color: #888; margin-bottom: 20px; }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  input[type="text"] {
+    background: #1a1d27;
+    border: 1px solid #333;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    width: 160px;
+  }
+  button {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  #btnStart {
+    background: #22c55e;
+    color: #000;
+  }
+  #btnStart:hover:not(:disabled) { background: #16a34a; }
+  #btnHangUp {
+    background: #ef4444;
+    color: #fff;
+  }
+  #btnHangUp:hover:not(:disabled) { background: #dc2626; }
+
+  /* Status */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 0.85rem;
+  }
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #555;
+    transition: background 0.3s;
+  }
+  .status-dot.connected { background: #22c55e; }
+  .status-dot.speaking { background: #3b82f6; animation: pulse 1s infinite; }
+  .status-dot.listening { background: #f59e0b; animation: pulse 1.5s infinite; }
+  .status-dot.error { background: #ef4444; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Layout: transcript + summary side by side on wide screens */
+  .main-area {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+    max-width: 900px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Transcript */
+  .transcript-panel {
+    flex: 2;
+    background: #1a1d27;
+    border-radius: 8px;
+    padding: 16px;
+    overflow-y: auto;
+    max-height: 65vh;
+    min-height: 300px;
+  }
+  .transcript-panel h3 {
+    font-size: 0.8rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+  }
+  .turn {
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    max-width: 85%;
+  }
+  .turn.agent {
+    background: #1e3a5f;
+    color: #93c5fd;
+    margin-right: auto;
+  }
+  .turn.agent .label { color: #60a5fa; font-weight: 600; font-size: 0.75rem; }
+  .turn.prospect {
+    background: #1a3d2e;
+    color: #86efac;
+    margin-left: auto;
+  }
+  .turn.prospect .label { color: #4ade80; font-weight: 600; font-size: 0.75rem; }
+  .turn.streaming { opacity: 0.7; font-style: italic; }
+
+  /* Summary panel */
+  .summary-panel {
+    flex: 1;
+    background: #1a1d27;
+    border-radius: 8px;
+    padding: 16px;
+    display: none;
+    max-height: 65vh;
+    overflow-y: auto;
+  }
+  .summary-panel.visible { display: block; }
+  .summary-panel h3 {
+    font-size: 0.8rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+  }
+  .summary-item {
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+  }
+  .summary-item .key { color: #888; }
+  .summary-item .val { color: #e0e0e0; font-weight: 500; }
+
+  @media (max-width: 700px) {
+    .main-area { flex-direction: column; }
+    .transcript-panel, .summary-panel { max-height: 50vh; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Cold Caller v2 - Voice Test</h1>
+<p class="subtitle">Browser mic &rarr; Azure Realtime API &rarr; browser speaker</p>
+
+<div class="controls">
+  <input type="text" id="leadId" value="lead_001" placeholder="Lead ID" />
+  <button id="btnStart">Start Call</button>
+  <button id="btnHangUp" disabled>Hang Up</button>
+</div>
+
+<div class="status-bar">
+  <div class="status-dot" id="statusDot"></div>
+  <span id="statusText">Idle</span>
+</div>
+
+<div class="main-area">
+  <div class="transcript-panel" id="transcript">
+    <h3>Transcript</h3>
+  </div>
+  <div class="summary-panel" id="summaryPanel">
+    <h3>Call Summary</h3>
+    <div id="summaryContent"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let ws = null;
+let audioCtx = null;
+let micStream = null;
+let scriptNode = null;
+let playbackTime = 0;
+let isCallActive = false;
+
+const SAMPLE_RATE = 24000;
+
+const dom = {
+  leadId: document.getElementById('leadId'),
+  btnStart: document.getElementById('btnStart'),
+  btnHangUp: document.getElementById('btnHangUp'),
+  statusDot: document.getElementById('statusDot'),
+  statusText: document.getElementById('statusText'),
+  transcript: document.getElementById('transcript'),
+  summaryPanel: document.getElementById('summaryPanel'),
+  summaryContent: document.getElementById('summaryContent'),
+};
+
+// ============================================================
+// STATUS HELPERS
+// ============================================================
+function setStatus(state, text) {
+  dom.statusDot.className = 'status-dot ' + state;
+  dom.statusText.textContent = text;
+}
+
+// ============================================================
+// TRANSCRIPT
+// ============================================================
+let currentAgentEl = null;  // streaming agent transcript element
+
+function addTurn(role, text, streaming = false) {
+  const div = document.createElement('div');
+  div.className = `turn ${role}` + (streaming ? ' streaming' : '');
+  const label = role === 'agent' ? 'Agent' : 'Prospect';
+  div.innerHTML = `<div class="label">${label}</div><div class="text">${escapeHtml(text)}</div>`;
+  dom.transcript.appendChild(div);
+  dom.transcript.scrollTop = dom.transcript.scrollHeight;
+  return div;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ============================================================
+// AUDIO PLAYBACK — gapless PCM16 queue
+// ============================================================
+function playPcm16(base64) {
+  if (!audioCtx) return;
+
+  const raw = atob(base64);
+  const int16 = new Int16Array(raw.length / 2);
+  for (let i = 0; i < int16.length; i++) {
+    int16[i] = raw.charCodeAt(i * 2) | (raw.charCodeAt(i * 2 + 1) << 8);
+  }
+
+  const float32 = new Float32Array(int16.length);
+  for (let i = 0; i < int16.length; i++) {
+    float32[i] = int16[i] / 32768;
+  }
+
+  const buf = audioCtx.createBuffer(1, float32.length, SAMPLE_RATE);
+  buf.getChannelData(0).set(float32);
+
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  src.connect(audioCtx.destination);
+
+  const now = audioCtx.currentTime;
+  const startAt = Math.max(now, playbackTime);
+  src.start(startAt);
+  playbackTime = startAt + buf.duration;
+}
+
+function stopPlayback() {
+  // Reset playback schedule so new audio starts immediately
+  playbackTime = 0;
+}
+
+// ============================================================
+// AUDIO CAPTURE — mic → PCM16 → base64 → WebSocket
+// ============================================================
+async function startMic() {
+  micStream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      sampleRate: SAMPLE_RATE,
+      channelCount: 1,
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    }
+  });
+
+  audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
+  const source = audioCtx.createMediaStreamSource(micStream);
+
+  // ScriptProcessorNode — bufferSize 4096 = ~170ms chunks at 24kHz
+  scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
+  scriptNode.onaudioprocess = (e) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const float32 = e.inputBuffer.getChannelData(0);
+    const int16 = new Int16Array(float32.length);
+    for (let i = 0; i < float32.length; i++) {
+      const s = Math.max(-1, Math.min(1, float32[i]));
+      int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    // Convert to base64
+    const bytes = new Uint8Array(int16.buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const b64 = btoa(binary);
+    ws.send(JSON.stringify({ type: 'audio', data: b64 }));
+  };
+
+  source.connect(scriptNode);
+  scriptNode.connect(audioCtx.destination);  // needed for onaudioprocess to fire
+}
+
+function stopMic() {
+  if (scriptNode) {
+    scriptNode.disconnect();
+    scriptNode = null;
+  }
+  if (micStream) {
+    micStream.getTracks().forEach(t => t.stop());
+    micStream = null;
+  }
+}
+
+// ============================================================
+// WEBSOCKET — connect & handle messages
+// ============================================================
+function startCall() {
+  const leadId = dom.leadId.value.trim();
+  if (!leadId) return;
+
+  dom.btnStart.disabled = true;
+  dom.btnHangUp.disabled = false;
+  dom.leadId.disabled = true;
+  dom.transcript.innerHTML = '<h3>Transcript</h3>';
+  dom.summaryPanel.classList.remove('visible');
+  currentAgentEl = null;
+  isCallActive = true;
+  playbackTime = 0;
+
+  setStatus('', 'Connecting...');
+
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws/call/${leadId}`);
+
+  ws.onopen = () => {
+    setStatus('connected', 'Connected - setting up...');
+  };
+
+  ws.onmessage = (evt) => {
+    const msg = JSON.parse(evt.data);
+    handleServerMessage(msg);
+  };
+
+  ws.onclose = () => {
+    setStatus('', 'Disconnected');
+    endCallCleanup();
+  };
+
+  ws.onerror = (e) => {
+    setStatus('error', 'Connection error');
+    console.error('WebSocket error:', e);
+    endCallCleanup();
+  };
+}
+
+async function handleServerMessage(msg) {
+  switch (msg.type) {
+    case 'ready':
+      setStatus('connected', `Ready - calling ${msg.prospect_name || msg.lead_id}`);
+      // Start mic and trigger greeting
+      try {
+        await startMic();
+        ws.send(JSON.stringify({ type: 'start_call' }));
+        setStatus('listening', 'Call active - listening...');
+      } catch (e) {
+        setStatus('error', 'Mic access denied');
+        console.error('Mic error:', e);
+      }
+      break;
+
+    case 'audio':
+      playPcm16(msg.data);
+      break;
+
+    case 'audio_done':
+      setStatus('listening', 'Listening...');
+      break;
+
+    case 'agent_transcript_delta':
+      setStatus('speaking', 'Agent speaking...');
+      if (!currentAgentEl) {
+        currentAgentEl = addTurn('agent', msg.delta, true);
+      } else {
+        const textEl = currentAgentEl.querySelector('.text');
+        textEl.textContent += msg.delta;
+        dom.transcript.scrollTop = dom.transcript.scrollHeight;
+      }
+      break;
+
+    case 'agent_transcript_done':
+      if (currentAgentEl) {
+        currentAgentEl.classList.remove('streaming');
+        const textEl = currentAgentEl.querySelector('.text');
+        textEl.textContent = msg.transcript;
+      } else {
+        addTurn('agent', msg.transcript);
+      }
+      currentAgentEl = null;
+      break;
+
+    case 'user_transcript':
+      addTurn('prospect', msg.transcript);
+      break;
+
+    case 'speech_started':
+      stopPlayback();
+      setStatus('listening', 'User speaking...');
+      break;
+
+    case 'speech_stopped':
+      setStatus('connected', 'Processing...');
+      break;
+
+    case 'call_ended':
+      setStatus('', 'Call ended');
+      showSummary(msg.outcome);
+      endCallCleanup();
+      break;
+
+    case 'error':
+      setStatus('error', `Error: ${msg.message}`);
+      console.error('Server error:', msg.message);
+      break;
+  }
+}
+
+function hangUp() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'stop' }));
+  }
+  endCallCleanup();
+}
+
+function endCallCleanup() {
+  isCallActive = false;
+  stopMic();
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.close();
+  }
+  ws = null;
+  dom.btnStart.disabled = false;
+  dom.btnHangUp.disabled = true;
+  dom.leadId.disabled = false;
+  // Keep audioCtx alive for playback of final audio
+}
+
+// ============================================================
+// SUMMARY
+// ============================================================
+function showSummary(outcome) {
+  if (!outcome) return;
+  dom.summaryPanel.classList.add('visible');
+  dom.summaryContent.innerHTML = `
+    <div class="summary-item"><span class="key">Outcome: </span><span class="val">${outcome.outcome || 'N/A'}</span></div>
+    <div class="summary-item"><span class="key">Reason: </span><span class="val">${outcome.reason || 'N/A'}</span></div>
+    <div class="summary-item"><span class="key">Summary: </span><span class="val">${escapeHtml(outcome.summary || 'N/A')}</span></div>
+  `;
+}
+
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
+dom.btnStart.addEventListener('click', startCall);
+dom.btnHangUp.addEventListener('click', hangUp);
+
+// Enter key on lead ID input
+dom.leadId.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !dom.btnStart.disabled) startCall();
+});
+</script>
+</body>
+</html>
