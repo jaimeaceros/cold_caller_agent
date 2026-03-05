@@ -688,7 +688,8 @@ class RealtimeSession:
                 # Cancel in-progress response to prevent double-speech.
                 # Server VAD auto-triggers new response.create after user finishes.
                 await self.ws.send(json.dumps({"type": "response.cancel"}))
-                logger.debug("Sent response.cancel on speech_started")
+                pending_function_calls = {}  # Discard partial tool calls from interrupted response
+                logger.debug("Sent response.cancel on speech_started, cleared pending calls")
                 if self.on_speech_started:
                     await self.on_speech_started()
 
@@ -723,16 +724,22 @@ class RealtimeSession:
             elif event_type == "response.done":
                 response = event.get("response", {})
                 status = response.get("status", "unknown")
-                if status == "failed":
+
+                if status == "cancelled":
+                    # User interrupted — discard any partial tool calls, do NOT trigger continuation
+                    logger.debug(f"Response cancelled (user interruption), discarding {len(pending_function_calls)} pending calls")
+                    pending_function_calls = {}
+                elif status == "failed":
                     err = response.get("status_details", {})
                     logger.error(f"Response failed: {err}")
                     if self.on_error:
                         await self.on_error(f"Response failed: {err}")
-
-                # Execute any pending function calls
-                if pending_function_calls:
-                    await self._execute_function_calls(pending_function_calls)
-                    pending_function_calls = {}
+                    pending_function_calls = {}  # Discard — response was not successful
+                else:
+                    # Completed — execute any pending function calls
+                    if pending_function_calls:
+                        await self._execute_function_calls(pending_function_calls)
+                        pending_function_calls = {}
 
                 # If end_call was triggered, notify
                 if self.call_ended and self.on_call_ended:
@@ -761,6 +768,8 @@ class RealtimeSession:
 
     async def _execute_function_calls(self, calls: dict):
         """Execute function calls and send results back to the model."""
+        needs_continuation = False
+
         for call_id, call_info in calls.items():
             name = call_info["name"]
             try:
@@ -771,11 +780,14 @@ class RealtimeSession:
             logger.info(f"Tool call: {name}({json.dumps(args)[:200]})")
 
             if name == "search_knowledge_base":
-                result = search_knowledge_base(
+                # Run sync Cosmos query in a thread to avoid blocking the event loop
+                result = await asyncio.to_thread(
+                    search_knowledge_base,
                     query=args.get("query", ""),
                     category=args.get("category"),
                 )
                 self.knowledge_queries.append(args)
+                needs_continuation = True  # Model needs search results to continue speaking
 
             elif name == "report_turn_metadata":
                 if self.session:
@@ -789,6 +801,7 @@ class RealtimeSession:
                 )
                 if self.on_metadata_update:
                     await self.on_metadata_update(args)
+                # No continuation needed — model already finished speaking before this call
 
             elif name == "end_call":
                 if self.session:
@@ -797,6 +810,7 @@ class RealtimeSession:
                 self.call_outcome = args
                 result = "Call ended."
                 logger.info(f"Call ended: {args.get('outcome')} — {args.get('reason')}")
+                # No continuation needed — call is over
 
             else:
                 result = f"Unknown function: {name}"
@@ -816,13 +830,17 @@ class RealtimeSession:
                 result_str = json.dumps(result) if not isinstance(result, str) else result
                 await self.on_tool_call(name, args, result_str)
 
-        # Trigger continuation with mode-aware modalities
-        await self.ws.send(json.dumps({
-            "type": "response.create",
-            "response": {
-                "modalities": self._response_modalities()
-            }
-        }))
+        # Only trigger continuation if the model needs tool results to continue speaking.
+        # report_turn_metadata and end_call are side-effects — model already finished its output.
+        # Unnecessary response.create causes the model to generate unwanted second responses
+        # and competes with VAD-triggered responses when the user speaks.
+        if needs_continuation:
+            await self.ws.send(json.dumps({
+                "type": "response.create",
+                "response": {
+                    "modalities": self._response_modalities()
+                }
+            }))
 
     # ----- teardown -----
 

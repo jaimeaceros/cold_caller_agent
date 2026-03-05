@@ -630,6 +630,7 @@ let timerInterval = null;
 let leadsData = [];
 let selectedLead = null;
 let objectionsCount = 0;
+let audioChunksSent = 0;
 
 const SAMPLE_RATE = 24000;
 
@@ -949,6 +950,10 @@ async function startMic() {
       binary += String.fromCharCode(bytes[i]);
     }
     ws.send(JSON.stringify({ type: 'audio', data: btoa(binary) }));
+    audioChunksSent++;
+    if (audioChunksSent % 20 === 0) {
+      addLog('audio', `Sent ${audioChunksSent} chunks (mic active)`);
+    }
   };
 
   source.connect(scriptNode);
@@ -1009,6 +1014,7 @@ function startCall() {
   isCallActive = true;
   playbackTime = 0;
   objectionsCount = 0;
+  audioChunksSent = 0;
 
   // Reset metadata display
   dom.metaPhase.textContent = '\u2014';
