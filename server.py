@@ -7,7 +7,9 @@ Endpoints:
     GET  /call/{id}      — Get current session state
     POST /call/{id}/end  — End a call and get summary
     GET  /health         — Health check
+    WS   /ws/text/{id}   — Text-mode interactive call (system_prompt_v2)
     WS   /ws/call/{id}   — Realtime voice call via WebSocket
+    GET  /text-test      — Browser text testing page
     GET  /voice-test     — Browser voice testing page
 """
 
@@ -307,10 +309,133 @@ def health():
 # VOICE TEST — Browser client
 # ============================================================
 
+@app.get("/text-test")
+async def text_test():
+    """Serve the browser text testing page (system_prompt_v2 via WebSocket)."""
+    return FileResponse("static/text_test.html")
+
+
 @app.get("/voice-test")
 async def voice_test():
     """Serve the browser voice testing page."""
     return FileResponse("static/voice_test.html")
+
+
+# ============================================================
+# WEBSOCKET — Text-mode interactive call (system_prompt_v2)
+# ============================================================
+
+@app.websocket("/ws/text/{lead_id}")
+async def ws_text_call(websocket: WebSocket, lead_id: str):
+    """Text-mode WebSocket for testing system_prompt_v2 interactively.
+
+    Uses AgentBrain (chat completions API) — no Realtime API needed.
+
+    Protocol:
+        Client -> Server: {"type": "start_call"} | {"type": "message", "text": "..."}
+        Server -> Client: {"type": "ready", ...} | {"type": "agent_response", ...} | {"type": "call_ended", ...} | {"type": "error", ...}
+    """
+    await websocket.accept()
+    logger.info(f"Text WebSocket connected: lead={lead_id}")
+
+    session_id = f"ws_{uuid.uuid4().hex[:8]}"
+
+    try:
+        # Start the call session (blocking LLM call — run in thread)
+        try:
+            output = await asyncio.to_thread(brain.start_call, session_id, lead_id)
+        except ValueError as e:
+            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.close()
+            return
+
+        session = brain.get_session(session_id)
+
+        await websocket.send_json({
+            "type": "ready",
+            "session_id": session_id,
+            "lead_id": lead_id,
+            "prospect_name": session.lead.get("contact", {}).get("name", "Unknown"),
+            "greeting": output.spoken_response,
+            "meta": output.meta.model_dump(),
+        })
+
+        # Message loop
+        while True:
+            try:
+                data = await websocket.receive_json()
+            except WebSocketDisconnect:
+                logger.info(f"Text WS disconnected: {session_id}")
+                break
+            except Exception as e:
+                logger.error(f"Text WS recv error: {e}")
+                break
+
+            msg_type = data.get("type", "")
+
+            if msg_type == "message":
+                prospect_text = data.get("text", "").strip()
+                if not prospect_text:
+                    continue
+
+                try:
+                    output = await asyncio.to_thread(brain.process_turn, session_id, prospect_text)
+                except ValueError as e:
+                    await websocket.send_json({"type": "error", "message": str(e)})
+                    break
+
+                session = brain.get_session(session_id)
+                is_over = session.is_over if session else False
+
+                await websocket.send_json({
+                    "type": "agent_response",
+                    "spoken_response": output.spoken_response,
+                    "phase": output.meta.current_phase,
+                    "sentiment": output.meta.prospect_sentiment,
+                    "is_call_over": is_over,
+                    "call_outcome": output.meta.call_outcome,
+                    "meta": output.meta.model_dump(),
+                })
+
+                if is_over:
+                    # Auto-persist
+                    try:
+                        _persist_call(session_id)
+                        logger.info(f"Text WS auto-logged: {session_id}")
+                    except Exception as e:
+                        logger.error(f"Text WS auto-log failed: {e}", exc_info=True)
+
+                    summary = brain.get_call_summary(session_id)
+                    await websocket.send_json({
+                        "type": "call_ended",
+                        "summary": summary,
+                    })
+                    break
+
+            elif msg_type == "end_call":
+                brain.end_call(session_id)
+                try:
+                    _persist_call(session_id)
+                except Exception as e:
+                    logger.error(f"Text WS persist failed: {e}", exc_info=True)
+
+                summary = brain.get_call_summary(session_id)
+                await websocket.send_json({
+                    "type": "call_ended",
+                    "summary": summary,
+                })
+                break
+
+    except Exception as e:
+        logger.error(f"Text WebSocket error: {e}", exc_info=True)
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except Exception:
+            pass
+
+    finally:
+        brain.cleanup_session(session_id)
+        logger.info(f"Text WS session cleaned up: {session_id}")
 
 
 # ============================================================
