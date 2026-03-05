@@ -354,6 +354,10 @@ class RealtimeSession:
         self.on_call_ended: AsyncCallback | None = None
         self.on_error: AsyncCallback | None = None
 
+        # New callbacks for UI metadata/tool visibility
+        self.on_tool_call: AsyncCallback | None = None
+        self.on_metadata_update: AsyncCallback | None = None
+
     # ----- lifecycle -----
 
     async def connect(self):
@@ -409,6 +413,7 @@ class RealtimeSession:
     async def configure(
         self,
         system_prompt: str | None = None,
+        voice: str = "alloy",
         vad_threshold: float = 0.5,
         vad_prefix_padding_ms: int = 300,
         vad_silence_ms: int = 800,
@@ -437,7 +442,7 @@ class RealtimeSession:
         if self.mode == "audio":
             session_config.update({
                 "modalities": ["text", "audio"],
-                "voice": "alloy",
+                "voice": voice,
                 "input_audio_format": "pcm16",
                 "output_audio_format": "pcm16",
                 "input_audio_transcription": {"model": "whisper-1"},
@@ -782,6 +787,8 @@ class RealtimeSession:
                     f"sentiment={args.get('prospect_sentiment')} "
                     f"next={args.get('next_move', 'N/A')[:60]}"
                 )
+                if self.on_metadata_update:
+                    await self.on_metadata_update(args)
 
             elif name == "end_call":
                 if self.session:
@@ -803,6 +810,11 @@ class RealtimeSession:
                     "output": json.dumps(result) if not isinstance(result, str) else result
                 }
             }))
+
+            # Notify UI about tool call
+            if self.on_tool_call:
+                result_str = json.dumps(result) if not isinstance(result, str) else result
+                await self.on_tool_call(name, args, result_str)
 
         # Trigger continuation with mode-aware modalities
         await self.ws.send(json.dumps({

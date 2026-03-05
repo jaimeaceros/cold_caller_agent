@@ -3,189 +3,614 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cold Caller v2 - Voice Test</title>
+<title>Cold Caller v2 - Voice Playground</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-primary: #0f1117;
+    --bg-secondary: #1a1d27;
+    --bg-tertiary: #222633;
+    --border: #2d3348;
+    --text-primary: #e0e0e0;
+    --text-secondary: #888;
+    --text-muted: #666;
+    --accent-green: #22c55e;
+    --accent-blue: #3b82f6;
+    --accent-red: #ef4444;
+    --accent-amber: #f59e0b;
+    --accent-purple: #a855f7;
+  }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #0f1117;
-    color: #e0e0e0;
-    min-height: 100vh;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    height: 100vh;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    padding: 20px;
+    overflow: hidden;
   }
-  h1 { font-size: 1.4rem; margin-bottom: 4px; color: #fff; }
-  .subtitle { font-size: 0.85rem; color: #888; margin-bottom: 20px; }
 
-  /* Controls */
-  .controls {
+  /* ---- HEADER ---- */
+  .header {
     display: flex;
-    gap: 12px;
     align-items: center;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-    justify-content: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+    flex-shrink: 0;
   }
-  input[type="text"] {
-    background: #1a1d27;
-    border: 1px solid #333;
-    color: #fff;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    width: 160px;
-  }
-  button {
-    padding: 8px 20px;
-    border: none;
-    border-radius: 6px;
-    font-size: 0.9rem;
+  .header h1 {
+    font-size: 1rem;
     font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  button:disabled { opacity: 0.4; cursor: not-allowed; }
-  #btnStart {
-    background: #22c55e;
-    color: #000;
-  }
-  #btnStart:hover:not(:disabled) { background: #16a34a; }
-  #btnHangUp {
-    background: #ef4444;
     color: #fff;
   }
-  #btnHangUp:hover:not(:disabled) { background: #dc2626; }
-
-  /* Status */
-  .status-bar {
+  .header .status-bar {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 16px;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
   }
   .status-dot {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: #555;
     transition: background 0.3s;
   }
-  .status-dot.connected { background: #22c55e; }
-  .status-dot.speaking { background: #3b82f6; animation: pulse 1s infinite; }
-  .status-dot.listening { background: #f59e0b; animation: pulse 1.5s infinite; }
-  .status-dot.error { background: #ef4444; }
+  .status-dot.connected { background: var(--accent-green); }
+  .status-dot.speaking { background: var(--accent-blue); animation: pulse 1s infinite; }
+  .status-dot.listening { background: var(--accent-amber); animation: pulse 1.5s infinite; }
+  .status-dot.error { background: var(--accent-red); }
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
   }
+  .header .timer {
+    font-family: 'SF Mono', 'Consolas', monospace;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
 
-  /* Layout: transcript + summary side by side on wide screens */
-  .main-area {
+  /* ---- MAIN LAYOUT ---- */
+  .main-layout {
     display: flex;
-    gap: 16px;
-    width: 100%;
-    max-width: 900px;
     flex: 1;
     min-height: 0;
   }
 
-  /* Transcript */
-  .transcript-panel {
-    flex: 2;
-    background: #1a1d27;
-    border-radius: 8px;
-    padding: 16px;
+  /* ---- SIDEBAR ---- */
+  .sidebar {
+    width: 280px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
     overflow-y: auto;
-    max-height: 65vh;
-    min-height: 300px;
+    flex-shrink: 0;
   }
-  .transcript-panel h3 {
+  .sidebar-section {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-section h3 {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+
+  /* Form elements */
+  .form-group {
+    margin-bottom: 10px;
+  }
+  .form-group label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+  select, input[type="range"] {
+    width: 100%;
+  }
+  select {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 6px 8px;
+    border-radius: 4px;
     font-size: 0.8rem;
-    color: #888;
+    cursor: pointer;
+  }
+  input[type="range"] {
+    -webkit-appearance: none;
+    background: var(--bg-tertiary);
+    height: 4px;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent-blue);
+    cursor: pointer;
+  }
+  .range-value {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    float: right;
+    margin-top: -18px;
+  }
+
+  /* Lead info card */
+  .lead-card {
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+  .lead-card .lead-name {
+    font-weight: 600;
+    color: #fff;
+    font-size: 0.9rem;
+  }
+  .lead-card .lead-title {
+    color: var(--accent-blue);
+    font-size: 0.8rem;
+  }
+  .lead-card .lead-detail {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+  }
+  .lead-card.empty {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 16px 12px;
+  }
+
+  /* Live metadata */
+  .meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .meta-item {
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    padding: 6px 8px;
+  }
+  .meta-item .meta-label {
+    font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin-bottom: 12px;
+    color: var(--text-muted);
+  }
+  .meta-item .meta-value {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: 2px;
+  }
+  .meta-item .meta-value.phase { color: var(--accent-purple); }
+  .meta-item .meta-value.sentiment-positive { color: var(--accent-green); }
+  .meta-item .meta-value.sentiment-neutral { color: var(--accent-amber); }
+  .meta-item .meta-value.sentiment-negative { color: var(--accent-red); }
+  .meta-item .meta-value.sentiment-hostile { color: var(--accent-red); font-weight: 700; }
+
+  /* BANT progress */
+  .bant-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .bant-item {
+    text-align: center;
+    padding: 4px;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    font-size: 0.7rem;
+  }
+  .bant-item .bant-letter {
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .bant-item.discovered .bant-letter { color: var(--accent-green); }
+  .bant-item .bant-detail {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Prompt viewer toggle */
+  .prompt-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+  }
+  .prompt-toggle:hover { border-color: var(--text-muted); color: var(--text-primary); }
+  .prompt-viewer {
+    display: none;
+    margin-top: 8px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 0.7rem;
+    font-family: 'SF Mono', 'Consolas', monospace;
+    white-space: pre-wrap;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+  .prompt-viewer.visible { display: block; }
+
+  /* ---- CONVERSATION PANEL ---- */
+  .conversation-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* Transcript */
+  .transcript-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    min-height: 0;
   }
   .turn {
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    line-height: 1.4;
-    max-width: 85%;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    max-width: 80%;
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
   }
   .turn.agent {
     background: #1e3a5f;
     color: #93c5fd;
     margin-right: auto;
+    border-bottom-left-radius: 2px;
   }
-  .turn.agent .label { color: #60a5fa; font-weight: 600; font-size: 0.75rem; }
+  .turn.agent .label { color: #60a5fa; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; }
   .turn.prospect {
     background: #1a3d2e;
     color: #86efac;
     margin-left: auto;
+    border-bottom-right-radius: 2px;
   }
-  .turn.prospect .label { color: #4ade80; font-weight: 600; font-size: 0.75rem; }
-  .turn.streaming { opacity: 0.7; font-style: italic; }
+  .turn.prospect .label { color: #4ade80; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  .turn.streaming { opacity: 0.7; }
 
-  /* Summary panel */
-  .summary-panel {
-    flex: 1;
-    background: #1a1d27;
-    border-radius: 8px;
-    padding: 16px;
-    display: none;
-    max-height: 65vh;
-    overflow-y: auto;
+  /* Tool call inline */
+  .tool-call-block {
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    background: var(--bg-tertiary);
+    border-left: 3px solid var(--accent-purple);
+    border-radius: 0 6px 6px 0;
+    font-size: 0.75rem;
+    max-width: 80%;
+    animation: fadeIn 0.2s ease;
   }
-  .summary-panel.visible { display: block; }
-  .summary-panel h3 {
-    font-size: 0.8rem;
-    color: #888;
+  .tool-call-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    color: var(--accent-purple);
+    font-weight: 600;
+  }
+  .tool-call-header:hover { color: #c084fc; }
+  .tool-call-details {
+    display: none;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+    font-family: 'SF Mono', 'Consolas', monospace;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .tool-call-details.visible { display: block; }
+
+  /* Controls bar */
+  .controls-bar {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-secondary);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .audio-meter-container {
+    flex: 1;
+    height: 6px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .audio-meter-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent-green);
+    border-radius: 3px;
+    transition: width 0.05s linear, background 0.2s;
+  }
+  .audio-meter-fill.hot { background: var(--accent-red); }
+  button {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  button:disabled { opacity: 0.35; cursor: not-allowed; }
+  #btnStart {
+    background: var(--accent-green);
+    color: #000;
+  }
+  #btnStart:hover:not(:disabled) { background: #16a34a; }
+  #btnHangUp {
+    background: var(--accent-red);
+    color: #fff;
+  }
+  #btnHangUp:hover:not(:disabled) { background: #dc2626; }
+
+  /* Call summary overlay */
+  .call-summary {
+    display: none;
+    padding: 16px 20px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .call-summary.visible { display: block; }
+  .call-summary h3 {
+    font-size: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 12px;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+  }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px;
   }
   .summary-item {
-    margin-bottom: 8px;
-    font-size: 0.85rem;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    padding: 8px 10px;
   }
-  .summary-item .key { color: #888; }
-  .summary-item .val { color: #e0e0e0; font-weight: 500; }
+  .summary-item .s-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+  }
+  .summary-item .s-value {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: 2px;
+  }
 
-  @media (max-width: 700px) {
-    .main-area { flex-direction: column; }
-    .transcript-panel, .summary-panel { max-height: 50vh; }
+  /* ---- SERVER LOG ---- */
+  .server-log-container {
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .server-log-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 20px;
+    background: var(--bg-secondary);
+    cursor: pointer;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    user-select: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+  }
+  .server-log-toggle:hover { color: var(--text-secondary); }
+  .server-log-toggle .arrow { transition: transform 0.2s; }
+  .server-log-toggle.expanded .arrow { transform: rotate(90deg); }
+  .server-log {
+    display: none;
+    max-height: 150px;
+    overflow-y: auto;
+    padding: 4px 20px 8px;
+    background: var(--bg-primary);
+    font-family: 'SF Mono', 'Consolas', monospace;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .server-log.visible { display: block; }
+  .log-entry { white-space: nowrap; }
+  .log-entry .log-time { color: var(--text-muted); margin-right: 8px; }
+  .log-entry .log-type { color: var(--accent-blue); }
+  .log-entry .log-type.tool { color: var(--accent-purple); }
+  .log-entry .log-type.error { color: var(--accent-red); }
+
+  /* ---- RESPONSIVE ---- */
+  @media (max-width: 800px) {
+    .sidebar { width: 100%; max-height: 40vh; border-right: none; border-bottom: 1px solid var(--border); }
+    .main-layout { flex-direction: column; }
   }
 </style>
 </head>
 <body>
 
-<h1>Cold Caller v2 - Voice Test</h1>
-<p class="subtitle">Browser mic &rarr; Azure Realtime API &rarr; browser speaker</p>
-
-<div class="controls">
-  <input type="text" id="leadId" value="lead_001" placeholder="Lead ID" />
-  <button id="btnStart">Start Call</button>
-  <button id="btnHangUp" disabled>Hang Up</button>
+<!-- HEADER -->
+<div class="header">
+  <h1>Cold Caller v2 &mdash; Voice Playground</h1>
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Idle</span>
+    <span class="timer" id="callTimer"></span>
+  </div>
 </div>
 
-<div class="status-bar">
-  <div class="status-dot" id="statusDot"></div>
-  <span id="statusText">Idle</span>
+<!-- MAIN LAYOUT -->
+<div class="main-layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- Lead Selection -->
+    <div class="sidebar-section">
+      <h3>Lead</h3>
+      <div class="form-group">
+        <select id="leadSelect">
+          <option value="">Loading leads...</option>
+        </select>
+      </div>
+      <div class="lead-card empty" id="leadCard">Select a lead to begin</div>
+    </div>
+
+    <!-- Voice & VAD Settings -->
+    <div class="sidebar-section">
+      <h3>Voice Settings</h3>
+      <div class="form-group">
+        <label>Voice</label>
+        <select id="voiceSelect">
+          <option value="alloy" selected>Alloy</option>
+          <option value="echo">Echo</option>
+          <option value="shimmer">Shimmer</option>
+          <option value="ash">Ash</option>
+          <option value="ballad">Ballad</option>
+          <option value="coral">Coral</option>
+          <option value="sage">Sage</option>
+          <option value="verse">Verse</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>VAD Silence Duration</label>
+        <input type="range" id="vadSilence" min="200" max="2000" step="50" value="800" />
+        <div class="range-value" id="vadSilenceVal">800ms</div>
+      </div>
+      <div class="form-group">
+        <label>VAD Threshold</label>
+        <input type="range" id="vadThreshold" min="0.1" max="0.9" step="0.05" value="0.5" />
+        <div class="range-value" id="vadThresholdVal">0.50</div>
+      </div>
+    </div>
+
+    <!-- Live State -->
+    <div class="sidebar-section">
+      <h3>Live State</h3>
+      <div class="meta-grid">
+        <div class="meta-item">
+          <div class="meta-label">Phase</div>
+          <div class="meta-value phase" id="metaPhase">&mdash;</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Sentiment</div>
+          <div class="meta-value" id="metaSentiment">&mdash;</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Objections</div>
+          <div class="meta-value" id="metaObjections">0</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Next Move</div>
+          <div class="meta-value" id="metaNextMove">&mdash;</div>
+        </div>
+      </div>
+      <div class="bant-grid" id="bantGrid">
+        <div class="bant-item" id="bantB">
+          <div class="bant-letter">B</div>
+          <div class="bant-detail" id="bantBDetail">&mdash;</div>
+        </div>
+        <div class="bant-item" id="bantA">
+          <div class="bant-letter">A</div>
+          <div class="bant-detail" id="bantADetail">&mdash;</div>
+        </div>
+        <div class="bant-item" id="bantN">
+          <div class="bant-letter">N</div>
+          <div class="bant-detail" id="bantNDetail">&mdash;</div>
+        </div>
+        <div class="bant-item" id="bantT">
+          <div class="bant-letter">T</div>
+          <div class="bant-detail" id="bantTDetail">&mdash;</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Prompt Viewer -->
+    <div class="sidebar-section">
+      <h3>Prompt</h3>
+      <button class="prompt-toggle" id="promptToggle">&#9656; View system prompt</button>
+      <div class="prompt-viewer" id="promptViewer">Prompt will appear after call starts...</div>
+    </div>
+
+  </div>
+
+  <!-- CONVERSATION AREA -->
+  <div class="conversation-area">
+    <div class="transcript-panel" id="transcript"></div>
+
+    <!-- Call Summary (after call ends) -->
+    <div class="call-summary" id="callSummary">
+      <h3>Call Summary</h3>
+      <div class="summary-grid" id="summaryGrid"></div>
+    </div>
+
+    <!-- Controls bar with audio meter -->
+    <div class="controls-bar">
+      <button id="btnStart"><span>&#9679;</span> Start Call</button>
+      <button id="btnHangUp" disabled><span>&#9632;</span> Hang Up</button>
+      <div class="audio-meter-container">
+        <div class="audio-meter-fill" id="audioMeter"></div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
-<div class="main-area">
-  <div class="transcript-panel" id="transcript">
-    <h3>Transcript</h3>
-  </div>
-  <div class="summary-panel" id="summaryPanel">
-    <h3>Call Summary</h3>
-    <div id="summaryContent"></div>
-  </div>
+<!-- SERVER LOG (collapsible) -->
+<div class="server-log-container">
+  <button class="server-log-toggle" id="logToggle">
+    <span class="arrow">&#9656;</span> Server Log
+  </button>
+  <div class="server-log" id="serverLog"></div>
 </div>
 
 <script>
@@ -196,50 +621,241 @@ let ws = null;
 let audioCtx = null;
 let micStream = null;
 let scriptNode = null;
+let analyserNode = null;
 let playbackTime = 0;
-let activeSources = [];  // Track playing AudioBufferSource nodes for interruption cleanup
+let activeSources = [];
 let isCallActive = false;
+let callStartTime = null;
+let timerInterval = null;
+let leadsData = [];
+let selectedLead = null;
+let objectionsCount = 0;
 
 const SAMPLE_RATE = 24000;
 
+// DOM refs
+const $ = id => document.getElementById(id);
 const dom = {
-  leadId: document.getElementById('leadId'),
-  btnStart: document.getElementById('btnStart'),
-  btnHangUp: document.getElementById('btnHangUp'),
-  statusDot: document.getElementById('statusDot'),
-  statusText: document.getElementById('statusText'),
-  transcript: document.getElementById('transcript'),
-  summaryPanel: document.getElementById('summaryPanel'),
-  summaryContent: document.getElementById('summaryContent'),
+  leadSelect: $('leadSelect'),
+  leadCard: $('leadCard'),
+  voiceSelect: $('voiceSelect'),
+  vadSilence: $('vadSilence'),
+  vadSilenceVal: $('vadSilenceVal'),
+  vadThreshold: $('vadThreshold'),
+  vadThresholdVal: $('vadThresholdVal'),
+  metaPhase: $('metaPhase'),
+  metaSentiment: $('metaSentiment'),
+  metaObjections: $('metaObjections'),
+  metaNextMove: $('metaNextMove'),
+  bantB: $('bantB'), bantBDetail: $('bantBDetail'),
+  bantA: $('bantA'), bantADetail: $('bantADetail'),
+  bantN: $('bantN'), bantNDetail: $('bantNDetail'),
+  bantT: $('bantT'), bantTDetail: $('bantTDetail'),
+  promptToggle: $('promptToggle'),
+  promptViewer: $('promptViewer'),
+  transcript: $('transcript'),
+  callSummary: $('callSummary'),
+  summaryGrid: $('summaryGrid'),
+  btnStart: $('btnStart'),
+  btnHangUp: $('btnHangUp'),
+  audioMeter: $('audioMeter'),
+  statusDot: $('statusDot'),
+  statusText: $('statusText'),
+  callTimer: $('callTimer'),
+  logToggle: $('logToggle'),
+  serverLog: $('serverLog'),
 };
 
 // ============================================================
-// STATUS HELPERS
+// INIT — fetch leads
+// ============================================================
+async function fetchLeads() {
+  try {
+    const resp = await fetch('/api/leads');
+    leadsData = await resp.json();
+    dom.leadSelect.innerHTML = '<option value="">-- Select a lead --</option>';
+    leadsData.forEach(lead => {
+      const opt = document.createElement('option');
+      opt.value = lead.id;
+      opt.textContent = `${lead.name} — ${lead.company_name}`;
+      dom.leadSelect.appendChild(opt);
+    });
+  } catch (e) {
+    dom.leadSelect.innerHTML = '<option value="">Failed to load leads</option>';
+    console.error('Failed to fetch leads:', e);
+  }
+}
+fetchLeads();
+
+dom.leadSelect.addEventListener('change', () => {
+  const id = dom.leadSelect.value;
+  selectedLead = leadsData.find(l => l.id === id) || null;
+  if (selectedLead) {
+    dom.leadCard.className = 'lead-card';
+    dom.leadCard.innerHTML = `
+      <div class="lead-name">${esc(selectedLead.name)}</div>
+      <div class="lead-title">${esc(selectedLead.title || '')}</div>
+      <div class="lead-detail">${esc(selectedLead.company_name || '')} &middot; ${esc(selectedLead.industry || '')}</div>
+      <div class="lead-detail">Size: ${esc(selectedLead.size || '')} &middot; Score: ${selectedLead.lead_score ?? '—'} &middot; Status: ${esc(selectedLead.status || '')}</div>
+    `;
+    dom.btnStart.disabled = false;
+  } else {
+    dom.leadCard.className = 'lead-card empty';
+    dom.leadCard.textContent = 'Select a lead to begin';
+    dom.btnStart.disabled = true;
+  }
+});
+
+// ============================================================
+// VAD SLIDER LABELS
+// ============================================================
+dom.vadSilence.addEventListener('input', () => {
+  dom.vadSilenceVal.textContent = dom.vadSilence.value + 'ms';
+});
+dom.vadThreshold.addEventListener('input', () => {
+  dom.vadThresholdVal.textContent = parseFloat(dom.vadThreshold.value).toFixed(2);
+});
+
+// ============================================================
+// PROMPT TOGGLE
+// ============================================================
+dom.promptToggle.addEventListener('click', () => {
+  dom.promptViewer.classList.toggle('visible');
+  dom.promptToggle.innerHTML = dom.promptViewer.classList.contains('visible')
+    ? '&#9662; Hide system prompt'
+    : '&#9656; View system prompt';
+});
+
+// ============================================================
+// SERVER LOG TOGGLE
+// ============================================================
+dom.logToggle.addEventListener('click', () => {
+  dom.serverLog.classList.toggle('visible');
+  dom.logToggle.classList.toggle('expanded');
+});
+
+function addLog(type, message, cls = '') {
+  const now = new Date();
+  const ts = now.toLocaleTimeString('en-US', { hour12: false });
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `<span class="log-time">${ts}</span><span class="log-type ${cls}">${esc(type)}</span> ${esc(message)}`;
+  dom.serverLog.appendChild(entry);
+  dom.serverLog.scrollTop = dom.serverLog.scrollHeight;
+}
+
+// ============================================================
+// STATUS & TIMER
 // ============================================================
 function setStatus(state, text) {
   dom.statusDot.className = 'status-dot ' + state;
   dom.statusText.textContent = text;
 }
 
+function startTimer() {
+  callStartTime = Date.now();
+  timerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+    const m = Math.floor(elapsed / 60);
+    const s = elapsed % 60;
+    dom.callTimer.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
+}
+
 // ============================================================
 // TRANSCRIPT
 // ============================================================
-let currentAgentEl = null;  // streaming agent transcript element
+let currentAgentEl = null;
 
 function addTurn(role, text, streaming = false) {
   const div = document.createElement('div');
   div.className = `turn ${role}` + (streaming ? ' streaming' : '');
   const label = role === 'agent' ? 'Agent' : 'Prospect';
-  div.innerHTML = `<div class="label">${label}</div><div class="text">${escapeHtml(text)}</div>`;
+  div.innerHTML = `<div class="label">${label}</div><div class="text">${esc(text)}</div>`;
   dom.transcript.appendChild(div);
   dom.transcript.scrollTop = dom.transcript.scrollHeight;
   return div;
 }
 
-function escapeHtml(s) {
+function addToolCall(name, args, result) {
+  const div = document.createElement('div');
+  div.className = 'tool-call-block';
+  const argsStr = typeof args === 'object' ? JSON.stringify(args, null, 2) : String(args);
+  const resultStr = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+  div.innerHTML = `
+    <div class="tool-call-header" onclick="this.nextElementSibling.classList.toggle('visible')">
+      &#128295; ${esc(name)}
+    </div>
+    <div class="tool-call-details">
+<strong>Args:</strong>
+${esc(argsStr)}
+
+<strong>Result:</strong>
+${esc(resultStr.substring(0, 500))}${resultStr.length > 500 ? '...' : ''}
+    </div>
+  `;
+  dom.transcript.appendChild(div);
+  dom.transcript.scrollTop = dom.transcript.scrollHeight;
+}
+
+function esc(s) {
+  if (s == null) return '';
   const d = document.createElement('div');
-  d.textContent = s;
+  d.textContent = String(s);
   return d.innerHTML;
+}
+
+// ============================================================
+// METADATA UPDATE
+// ============================================================
+function updateMetadata(meta) {
+  if (meta.current_phase) {
+    dom.metaPhase.textContent = meta.current_phase;
+  }
+  if (meta.prospect_sentiment) {
+    dom.metaSentiment.textContent = meta.prospect_sentiment;
+    dom.metaSentiment.className = 'meta-value sentiment-' + meta.prospect_sentiment;
+  }
+  if (meta.objections_detected && meta.objections_detected.length > 0) {
+    objectionsCount += meta.objections_detected.length;
+    dom.metaObjections.textContent = objectionsCount;
+  }
+  if (meta.next_move) {
+    dom.metaNextMove.textContent = meta.next_move.length > 30
+      ? meta.next_move.substring(0, 30) + '...'
+      : meta.next_move;
+    dom.metaNextMove.title = meta.next_move;
+  }
+
+  // BANT
+  const qd = meta.qualifying_data;
+  if (qd) {
+    if (qd.budget) {
+      dom.bantB.classList.add('discovered');
+      dom.bantBDetail.textContent = qd.budget;
+      dom.bantBDetail.title = qd.budget;
+    }
+    if (qd.authority) {
+      dom.bantA.classList.add('discovered');
+      dom.bantADetail.textContent = qd.authority;
+      dom.bantADetail.title = qd.authority;
+    }
+    if (qd.need) {
+      dom.bantN.classList.add('discovered');
+      dom.bantNDetail.textContent = qd.need;
+      dom.bantNDetail.title = qd.need;
+    }
+    if (qd.timeline) {
+      dom.bantT.classList.add('discovered');
+      dom.bantTDetail.textContent = qd.timeline;
+      dom.bantTDetail.title = qd.timeline;
+    }
+  }
 }
 
 // ============================================================
@@ -266,7 +882,6 @@ function playPcm16(base64) {
   src.buffer = buf;
   src.connect(audioCtx.destination);
 
-  // Track this source for interruption cleanup
   src.onended = () => {
     activeSources = activeSources.filter(s => s !== src);
   };
@@ -279,7 +894,6 @@ function playPcm16(base64) {
 }
 
 function stopPlayback() {
-  // Stop all currently playing/scheduled audio sources
   activeSources.forEach(src => {
     try { src.stop(); } catch(e) {}
     try { src.disconnect(); } catch(e) {}
@@ -289,7 +903,7 @@ function stopPlayback() {
 }
 
 // ============================================================
-// AUDIO CAPTURE — mic → PCM16 → base64 → WebSocket
+// AUDIO CAPTURE — mic + level meter
 // ============================================================
 async function startMic() {
   micStream = await navigator.mediaDevices.getUserMedia({
@@ -305,18 +919,20 @@ async function startMic() {
   audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
   const source = audioCtx.createMediaStreamSource(micStream);
 
-  // ScriptProcessorNode — bufferSize 4096 = ~170ms chunks at 24kHz
+  // Analyser for the audio level meter
+  analyserNode = audioCtx.createAnalyser();
+  analyserNode.fftSize = 256;
+  source.connect(analyserNode);
+
+  // ScriptProcessorNode for sending audio
   scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
-  // Noise gate threshold — audio chunks below this RMS level are
-  // treated as silence and not sent, preventing ambient office noise
-  // (AC, keyboard, distant chatter) from reaching the Realtime API.
   const NOISE_GATE_THRESHOLD = 0.01;
 
   scriptNode.onaudioprocess = (e) => {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     const float32 = e.inputBuffer.getChannelData(0);
 
-    // Noise gate: compute RMS and skip quiet chunks
+    // Noise gate
     let sumSq = 0;
     for (let i = 0; i < float32.length; i++) sumSq += float32[i] * float32[i];
     const rms = Math.sqrt(sumSq / float32.length);
@@ -327,18 +943,40 @@ async function startMic() {
       const s = Math.max(-1, Math.min(1, float32[i]));
       int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
     }
-    // Convert to base64
     const bytes = new Uint8Array(int16.buffer);
     let binary = '';
     for (let i = 0; i < bytes.length; i++) {
       binary += String.fromCharCode(bytes[i]);
     }
-    const b64 = btoa(binary);
-    ws.send(JSON.stringify({ type: 'audio', data: b64 }));
+    ws.send(JSON.stringify({ type: 'audio', data: btoa(binary) }));
   };
 
   source.connect(scriptNode);
-  scriptNode.connect(audioCtx.destination);  // needed for onaudioprocess to fire
+  scriptNode.connect(audioCtx.destination);
+
+  // Audio level meter animation
+  updateAudioMeter();
+}
+
+function updateAudioMeter() {
+  if (!analyserNode || !isCallActive) {
+    dom.audioMeter.style.width = '0%';
+    return;
+  }
+  const data = new Uint8Array(analyserNode.frequencyBinCount);
+  analyserNode.getByteTimeDomainData(data);
+
+  let sumSq = 0;
+  for (let i = 0; i < data.length; i++) {
+    const v = (data[i] - 128) / 128;
+    sumSq += v * v;
+  }
+  const rms = Math.sqrt(sumSq / data.length);
+  const pct = Math.min(100, rms * 400);
+  dom.audioMeter.style.width = pct + '%';
+  dom.audioMeter.className = 'audio-meter-fill' + (pct > 70 ? ' hot' : '');
+
+  requestAnimationFrame(updateAudioMeter);
 }
 
 function stopMic() {
@@ -350,31 +988,51 @@ function stopMic() {
     micStream.getTracks().forEach(t => t.stop());
     micStream = null;
   }
+  analyserNode = null;
+  dom.audioMeter.style.width = '0%';
 }
 
 // ============================================================
 // WEBSOCKET — connect & handle messages
 // ============================================================
 function startCall() {
-  const leadId = dom.leadId.value.trim();
-  if (!leadId) return;
+  if (!selectedLead) return;
+  const leadId = selectedLead.id;
 
   dom.btnStart.disabled = true;
   dom.btnHangUp.disabled = false;
-  dom.leadId.disabled = true;
-  dom.transcript.innerHTML = '<h3>Transcript</h3>';
-  dom.summaryPanel.classList.remove('visible');
+  dom.leadSelect.disabled = true;
+  dom.transcript.innerHTML = '';
+  dom.callSummary.classList.remove('visible');
+  dom.serverLog.innerHTML = '';
   currentAgentEl = null;
   isCallActive = true;
   playbackTime = 0;
+  objectionsCount = 0;
+
+  // Reset metadata display
+  dom.metaPhase.textContent = '\u2014';
+  dom.metaSentiment.textContent = '\u2014';
+  dom.metaSentiment.className = 'meta-value';
+  dom.metaObjections.textContent = '0';
+  dom.metaNextMove.textContent = '\u2014';
+  ['bantB','bantA','bantN','bantT'].forEach(id => {
+    $(id).classList.remove('discovered');
+  });
+  dom.bantBDetail.textContent = '\u2014';
+  dom.bantADetail.textContent = '\u2014';
+  dom.bantNDetail.textContent = '\u2014';
+  dom.bantTDetail.textContent = '\u2014';
 
   setStatus('', 'Connecting...');
+  addLog('ws', 'Connecting to /ws/call/' + leadId);
 
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${proto}//${location.host}/ws/call/${leadId}`);
 
   ws.onopen = () => {
-    setStatus('connected', 'Connected - setting up...');
+    setStatus('connected', 'Connected');
+    addLog('ws', 'WebSocket connected');
   };
 
   ws.onmessage = (evt) => {
@@ -383,12 +1041,16 @@ function startCall() {
   };
 
   ws.onclose = () => {
-    setStatus('', 'Disconnected');
-    endCallCleanup();
+    addLog('ws', 'WebSocket closed');
+    if (isCallActive) {
+      setStatus('', 'Disconnected');
+      endCallCleanup();
+    }
   };
 
   ws.onerror = (e) => {
     setStatus('error', 'Connection error');
+    addLog('error', 'WebSocket error', 'error');
     console.error('WebSocket error:', e);
     endCallCleanup();
   };
@@ -397,14 +1059,29 @@ function startCall() {
 async function handleServerMessage(msg) {
   switch (msg.type) {
     case 'ready':
+      addLog('session', `Ready: session=${msg.session_id} lead=${msg.lead_id}`);
       setStatus('connected', `Ready - calling ${msg.prospect_name || msg.lead_id}`);
+
+      // Send configuration before starting
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'configure',
+          voice: dom.voiceSelect.value,
+          vad_silence_ms: parseInt(dom.vadSilence.value),
+          vad_threshold: parseFloat(dom.vadThreshold.value),
+        }));
+      }
+
       // Start mic and trigger greeting
       try {
         await startMic();
         ws.send(JSON.stringify({ type: 'start_call' }));
-        setStatus('listening', 'Call active - listening...');
+        startTimer();
+        setStatus('listening', 'Call active');
+        addLog('session', 'Call started — mic active');
       } catch (e) {
         setStatus('error', 'Mic access denied');
+        addLog('error', 'Mic permission denied', 'error');
         console.error('Mic error:', e);
       }
       break;
@@ -415,6 +1092,7 @@ async function handleServerMessage(msg) {
 
     case 'audio_done':
       setStatus('listening', 'Listening...');
+      addLog('audio', 'Agent audio complete');
       break;
 
     case 'agent_transcript_delta':
@@ -437,31 +1115,50 @@ async function handleServerMessage(msg) {
         addTurn('agent', msg.transcript);
       }
       currentAgentEl = null;
+      addLog('transcript', 'Agent: ' + (msg.transcript || '').substring(0, 80));
       break;
 
     case 'user_transcript':
       addTurn('prospect', msg.transcript);
+      addLog('transcript', 'Prospect: ' + (msg.transcript || '').substring(0, 80));
       break;
 
     case 'speech_started':
       stopPlayback();
       setStatus('listening', 'User speaking...');
+      addLog('vad', 'Speech started — playback cancelled');
       break;
 
     case 'speech_stopped':
       setStatus('connected', 'Processing...');
+      addLog('vad', 'Speech stopped — processing');
+      break;
+
+    case 'tool_call':
+      addToolCall(msg.name, msg.args, msg.result);
+      addLog('tool', `${msg.name}(${JSON.stringify(msg.args).substring(0, 60)})`, 'tool');
+      break;
+
+    case 'metadata_update':
+      updateMetadata(msg.metadata);
+      addLog('meta', `phase=${msg.metadata.current_phase} sentiment=${msg.metadata.prospect_sentiment}`);
       break;
 
     case 'call_ended':
       setStatus('', 'Call ended');
+      addLog('session', 'Call ended: ' + JSON.stringify(msg.outcome || {}));
       showSummary(msg.outcome);
       endCallCleanup();
       break;
 
     case 'error':
       setStatus('error', `Error: ${msg.message}`);
+      addLog('error', msg.message, 'error');
       console.error('Server error:', msg.message);
       break;
+
+    default:
+      addLog('event', msg.type + ' ' + JSON.stringify(msg).substring(0, 100));
   }
 }
 
@@ -475,26 +1172,44 @@ function hangUp() {
 function endCallCleanup() {
   isCallActive = false;
   stopMic();
+  stopTimer();
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.close();
   }
   ws = null;
-  dom.btnStart.disabled = false;
+  dom.btnStart.disabled = !selectedLead;
   dom.btnHangUp.disabled = true;
-  dom.leadId.disabled = false;
-  // Keep audioCtx alive for playback of final audio
+  dom.leadSelect.disabled = false;
 }
 
 // ============================================================
-// SUMMARY
+// CALL SUMMARY
 // ============================================================
 function showSummary(outcome) {
   if (!outcome) return;
-  dom.summaryPanel.classList.add('visible');
-  dom.summaryContent.innerHTML = `
-    <div class="summary-item"><span class="key">Outcome: </span><span class="val">${outcome.outcome || 'N/A'}</span></div>
-    <div class="summary-item"><span class="key">Reason: </span><span class="val">${outcome.reason || 'N/A'}</span></div>
-    <div class="summary-item"><span class="key">Summary: </span><span class="val">${escapeHtml(outcome.summary || 'N/A')}</span></div>
+
+  const elapsed = callStartTime ? Math.floor((Date.now() - callStartTime) / 1000) : 0;
+  const m = Math.floor(elapsed / 60);
+  const s = elapsed % 60;
+
+  dom.callSummary.classList.add('visible');
+  dom.summaryGrid.innerHTML = `
+    <div class="summary-item">
+      <div class="s-label">Outcome</div>
+      <div class="s-value">${esc(outcome.outcome || 'N/A')}</div>
+    </div>
+    <div class="summary-item">
+      <div class="s-label">Duration</div>
+      <div class="s-value">${m}m ${s}s</div>
+    </div>
+    <div class="summary-item">
+      <div class="s-label">Reason</div>
+      <div class="s-value">${esc(outcome.reason || 'N/A')}</div>
+    </div>
+    <div class="summary-item">
+      <div class="s-label">Summary</div>
+      <div class="s-value">${esc(outcome.summary || 'N/A')}</div>
+    </div>
   `;
 }
 
@@ -504,10 +1219,8 @@ function showSummary(outcome) {
 dom.btnStart.addEventListener('click', startCall);
 dom.btnHangUp.addEventListener('click', hangUp);
 
-// Enter key on lead ID input
-dom.leadId.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !dom.btnStart.disabled) startCall();
-});
+// Start button disabled until a lead is selected
+dom.btnStart.disabled = true;
 </script>
 </body>
 </html>

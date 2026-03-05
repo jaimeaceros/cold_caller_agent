@@ -294,6 +294,21 @@ def _get_active_prompt_version() -> str:
         return "unknown"
 
 
+@app.get("/api/leads")
+async def list_leads():
+    """Return available leads for the voice test dropdown."""
+    from agent.cosmos import get_db
+    db = get_db()
+    container = db.get_container_client("leads")
+    leads = list(container.query_items(
+        "SELECT c.id, c.contact.name, c.contact.title, c.company.name AS company_name, "
+        "c.company.industry, c.company.size, c.status, c.lead_score, c.do_not_call "
+        "FROM c WHERE c.do_not_call != true",
+        enable_cross_partition_query=True
+    ))
+    return leads
+
+
 @app.get("/health")
 def health():
     """Health check for Azure Container Apps."""
@@ -493,6 +508,12 @@ async def ws_call(websocket: WebSocket, lead_id: str):
     async def on_error(message):
         await send_browser({"type": "error", "message": message})
 
+    async def on_tool_call(name, args, result):
+        await send_browser({"type": "tool_call", "name": name, "args": args, "result": result})
+
+    async def on_metadata_update(metadata):
+        await send_browser({"type": "metadata_update", "metadata": metadata})
+
     session.on_audio_delta = on_audio_delta
     session.on_audio_done = on_audio_done
     session.on_transcript_delta = on_transcript_delta
@@ -502,6 +523,8 @@ async def ws_call(websocket: WebSocket, lead_id: str):
     session.on_speech_stopped = on_speech_stopped
     session.on_call_ended = on_call_ended
     session.on_error = on_error
+    session.on_tool_call = on_tool_call
+    session.on_metadata_update = on_metadata_update
 
     event_loop_task = None
 
@@ -509,7 +532,11 @@ async def ws_call(websocket: WebSocket, lead_id: str):
         # Connect to Azure Realtime API
         await session.connect()
         call_session = session.init_call_session(session_id, lead_id)
-        await session.configure()
+
+        # Store configurable settings (may be overridden by browser before start_call)
+        voice_setting = "alloy"
+        vad_silence_ms = 800
+        vad_threshold = 0.5
 
         await send_browser({
             "type": "ready",
@@ -518,10 +545,7 @@ async def ws_call(websocket: WebSocket, lead_id: str):
             "prospect_name": call_session.lead.get("contact", {}).get("name", "Unknown"),
         })
 
-        # Start Azure event loop in background
-        event_loop_task = asyncio.create_task(session.run_event_loop())
-
-        # Read browser messages
+        # Read browser messages (configure comes first, then start_call triggers event loop)
         while True:
             try:
                 data = await websocket.receive_json()
@@ -534,8 +558,22 @@ async def ws_call(websocket: WebSocket, lead_id: str):
 
             msg_type = data.get("type", "")
 
-            if msg_type == "start_call":
-                # Trigger agent greeting via text (audio response comes back via event loop)
+            if msg_type == "configure":
+                # Browser sends settings before start_call
+                voice_setting = data.get("voice", voice_setting)
+                vad_silence_ms = data.get("vad_silence_ms", vad_silence_ms)
+                vad_threshold = data.get("vad_threshold", vad_threshold)
+                logger.info(f"Browser configure: voice={voice_setting} vad_silence={vad_silence_ms} vad_thresh={vad_threshold}")
+
+            elif msg_type == "start_call":
+                # Configure session with current settings, then trigger greeting
+                await session.configure(
+                    voice=voice_setting,
+                    vad_threshold=vad_threshold,
+                    vad_silence_ms=vad_silence_ms,
+                )
+                # Start Azure event loop in background
+                event_loop_task = asyncio.create_task(session.run_event_loop())
                 await session.send_text()
 
             elif msg_type == "audio":

@@ -150,9 +150,7 @@ def format_knowledge_for_prompt(items: list[dict]) -> str:
 
     return "\n".join(lines)
 
-# ============================================================
-# BLOB STORAGE — Prompt template loading
-# ============================================================
+
 
 _blob_client: BlobServiceClient | None = None
 
