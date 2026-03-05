@@ -197,6 +197,7 @@ let audioCtx = null;
 let micStream = null;
 let scriptNode = null;
 let playbackTime = 0;
+let activeSources = [];  // Track playing AudioBufferSource nodes for interruption cleanup
 let isCallActive = false;
 
 const SAMPLE_RATE = 24000;
@@ -265,6 +266,12 @@ function playPcm16(base64) {
   src.buffer = buf;
   src.connect(audioCtx.destination);
 
+  // Track this source for interruption cleanup
+  src.onended = () => {
+    activeSources = activeSources.filter(s => s !== src);
+  };
+  activeSources.push(src);
+
   const now = audioCtx.currentTime;
   const startAt = Math.max(now, playbackTime);
   src.start(startAt);
@@ -272,7 +279,12 @@ function playPcm16(base64) {
 }
 
 function stopPlayback() {
-  // Reset playback schedule so new audio starts immediately
+  // Stop all currently playing/scheduled audio sources
+  activeSources.forEach(src => {
+    try { src.stop(); } catch(e) {}
+    try { src.disconnect(); } catch(e) {}
+  });
+  activeSources = [];
   playbackTime = 0;
 }
 
