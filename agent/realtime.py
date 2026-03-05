@@ -406,11 +406,21 @@ class RealtimeSession:
         logger.info(f"CallSession initialized: session={session_id} lead={lead_id}")
         return self.session
 
-    async def configure(self, system_prompt: str | None = None):
+    async def configure(
+        self,
+        system_prompt: str | None = None,
+        vad_threshold: float = 0.5,
+        vad_prefix_padding_ms: int = 300,
+        vad_silence_ms: int = 800,
+    ):
         """Send session.update with system prompt and tools.
 
         If no prompt is passed, uses the session's assembled prompt with
         history injected.  Configuration adapts to self.mode.
+
+        VAD kwargs let callers tune turn detection per client:
+            - browser (server.py): defaults (800ms silence for noisy WebAudio)
+            - pyaudio (test_voice.py): 500ms silence for snappier response
         """
         if system_prompt is None:
             if self.session is None:
@@ -433,9 +443,9 @@ class RealtimeSession:
                 "input_audio_transcription": {"model": "whisper-1"},
                 "turn_detection": {
                     "type": "server_vad",
-                    "threshold": 0.5,
-                    "prefix_padding_ms": 300,
-                    "silence_duration_ms": 800,
+                    "threshold": vad_threshold,
+                    "prefix_padding_ms": vad_prefix_padding_ms,
+                    "silence_duration_ms": vad_silence_ms,
                 },
             })
         else:
