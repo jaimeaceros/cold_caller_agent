@@ -18,11 +18,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from agent.realtime import RealtimeSession, WS_URL, DEPLOYMENT
+from agent.realtime import RealtimeSession, ENDPOINT, MODEL
 
 print(f"🔧 Realtime API Test Harness")
-print(f"   WebSocket: {WS_URL}")
-print(f"   Deployment: {DEPLOYMENT}")
+print(f"   Endpoint: {ENDPOINT}")
+print(f"   Model: {MODEL}")
 
 
 # ============================================================
