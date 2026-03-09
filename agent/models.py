@@ -1,9 +1,19 @@
 """
-Request and response models for the Cold Caller Agent API.
+Models for the Cold Caller Agent.
+
+Includes Pydantic models for metadata/qualifying data, and dataclasses
+for session state tracking used by the Realtime API client.
 """
+
+import time
+from dataclasses import dataclass, field
 
 from pydantic import BaseModel, Field
 
+
+# ============================================================
+# PYDANTIC MODELS — used by realtime.py for metadata
+# ============================================================
 
 class QualifyingData(BaseModel):
     budget: str | None = None
@@ -27,43 +37,35 @@ class TurnMeta(BaseModel):
     call_outcome: str | None = None
 
 
-class AgentOutput(BaseModel):
-    """Parsed structured output from the LLM."""
-    spoken_response: str
-    meta: TurnMeta = Field(default_factory=TurnMeta)
+# ============================================================
+# DATACLASSES — session state (moved from brain.py)
+# ============================================================
+
+@dataclass
+class ConversationTurn:
+    role: str        # "prospect" or "agent"
+    content: str     # What was said
+    phase: str       # Phase during this turn
+    meta: dict | None = None  # Agent metadata (agent turns only)
+    timestamp: float = field(default_factory=time.time)
 
 
-
-class StartCallRequest(BaseModel):
+@dataclass
+class CallSession:
     session_id: str
     lead_id: str
-
-
-class TurnRequest(BaseModel):
-    session_id: str
-    prospect_message: str
-
-
-class CallResponse(BaseModel):
-    session_id: str
-    spoken_response: str
-    phase: str
-    sentiment: str = "neutral"
-    is_call_over: bool = False
+    lead: dict
+    agent_config: dict
+    knowledge: dict  # {category: [items]}
+    system_prompt: str  # Assembled prompt (without conversation history)
+    history: list[ConversationTurn] = field(default_factory=list)
+    cumulative_qualifying: dict = field(default_factory=lambda: {
+        "budget": None, "authority": None, "need": None, "timeline": None
+    })
+    all_objections_detected: list[str] = field(default_factory=list)
+    all_objections_resolved: list[str] = field(default_factory=list)
+    all_knowledge_used: list[str] = field(default_factory=list)
+    current_phase: str = "greeting"
     call_outcome: str | None = None
-    should_escalate: bool = False
-    meta: TurnMeta | None = None
-
-
-class CallSummary(BaseModel):
-    session_id: str
-    lead_id: str
-    total_turns: int
-    duration_seconds: float | None = None
-    final_phase: str
-    call_outcome: str | None = None
-    qualifying_data: QualifyingData = Field(default_factory=QualifyingData)
-    objections_raised: list[str] = Field(default_factory=list)
-    objections_resolved: list[str] = Field(default_factory=list)
-    knowledge_used: list[str] = Field(default_factory=list)
-    transcript: list[dict] = Field(default_factory=list)
+    started_at: float = field(default_factory=time.time)
+    is_over: bool = False

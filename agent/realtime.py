@@ -1,14 +1,13 @@
 """
 Realtime API session — production module.
 
-Uses the same Cosmos data layer, prompt template system, and session tracking
-as the REST path (agent/brain.py), but communicates over WebSocket using the
-Azure OpenAI Realtime API.  The model speaks naturally and reports metadata
-via tool calls instead of structured JSON output.
+Uses the Cosmos data layer, prompt template system, and session tracking
+to communicate over WebSocket using the Azure OpenAI Realtime API.
+The model speaks naturally and reports metadata via tool calls.
 
 Supports two modes:
   - "text"  — request/response style (used by test_realtime.py)
-  - "audio" — continuous event loop with PCM16 audio streaming (used by browser voice client)
+  - "audio" — continuous event loop with PCM16 audio streaming
 """
 
 import asyncio
@@ -27,8 +26,7 @@ from agent.cosmos import (
     search_knowledge_base,
     fetch_prompt_template,
 )
-from agent.brain import CallSession, ConversationTurn
-from agent.models import TurnMeta, QualifyingData
+from agent.models import CallSession, ConversationTurn, TurnMeta, QualifyingData
 
 logger = logging.getLogger(__name__)
 
@@ -733,9 +731,14 @@ class RealtimeSession:
             # --- Errors ---
             elif event_type == "error":
                 error = event.get("error", {})
-                logger.error(f"Realtime API error: {error}")
-                if self.on_error:
-                    await self.on_error(error.get("message", str(error)))
+                # response_cancel_not_active is harmless — we send cancel
+                # on every speech_started even if no response is active
+                if error.get("code") == "response_cancel_not_active":
+                    logger.debug(f"Ignored harmless cancel error")
+                else:
+                    logger.error(f"Realtime API error: {error}")
+                    if self.on_error:
+                        await self.on_error(error.get("message", str(error)))
 
             elif event_type == "rate_limits.updated":
                 pass

@@ -1,27 +1,23 @@
 # Cold Caller v2 — Claude Code Instructions
 
 ## Project overview
-AI-driven cold-call agent using Azure OpenAI (GPT-5), Azure Cosmos DB, and Python/FastAPI.
+AI-driven cold-call agent using Azure OpenAI Realtime API, Azure Cosmos DB, and Python.
 Active branch: **jaimeslilbranch**. `main` holds v1 (legacy). Migrate only when results are confirmed better.
 
 ## Key files
-- `agent/brain.py` — LLM orchestrator, prompt assembly, session management
+- `agent/realtime.py` — Realtime API WebSocket client, prompt assembly, session tracking
 - `agent/cosmos.py` — Cosmos DB data layer
-- `agent/models.py` — Pydantic models (AgentOutput, TurnMeta, QualifyingData)
-- `server.py` — FastAPI server
-- `test_db_beh.py` — Standalone test harness (single / conversation / interactive / prompt modes)
-- `system_prompt_v1.md` — Prompt template with `{{PLACEHOLDER}}` variables
+- `agent/models.py` — Pydantic models (TurnMeta, QualifyingData) + dataclasses (CallSession, ConversationTurn)
+- `assemble_prompt.py` — Assembles prompt + tool JSON for Azure AI Foundry Playground
+- `test_realtime.py` — Text-mode realtime test harness (tools execute against real Cosmos data)
+- `system_prompt_v2_realtime.md` — Prompt template with `{{PLACEHOLDER}}` variables
 - `seed_cosmos.py` / `seed_data/` — Cosmos DB seeding
 
 ## Environment
 - Platform: Windows 11, shell: bash
-- LLM: Azure OpenAI via `LLM_BASE_URL` (full deployment URL including `chat/completions`)
+- LLM: Azure OpenAI Realtime API via WebSocket
 - DB: Azure Cosmos DB via `COSMOS_CONNECTION_STRING`
 - Secrets live in `.env` — **never commit `.env`**
-
-## LLM URL rule
-`LLM_BASE_URL` in `.env` is the **full** Azure endpoint URL (includes `/chat/completions?api-version=...`).
-Code detects this with `"chat/completions" in url` and uses it as-is — never appends path segments.
 
 ## Auto-commit policy
 **After every meaningful code change, create a git commit automatically.**
@@ -40,10 +36,9 @@ git push origin jaimeslilbranch
 
 ## Testing
 ```bash
-python test_db_beh.py single lead_001        # One greeting turn
-python test_db_beh.py conversation lead_001  # Scripted multi-turn
-python test_db_beh.py interactive lead_001   # Live prospect role-play
-python test_db_beh.py prompt lead_001        # Print assembled prompt
+python assemble_prompt.py --lead lead_001    # Assemble prompt for Azure Playground
+python test_realtime.py lead_001             # Quick 2-turn text test (tools work)
+python test_realtime.py interactive lead_001 # Interactive text test (tools work)
 ```
 
 ## Branch strategy
